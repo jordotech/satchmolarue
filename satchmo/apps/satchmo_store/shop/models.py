@@ -586,6 +586,8 @@ ORDER_STATUS = (
     ('New', _('New')),
     ('Blocked', _('Blocked')),
     ('In Process', _('In Process')),
+    ('Backordered', _('Backordered')),
+    ('Front Office', _('Front Office')),
     ('Billed', _('Billed')),
     ('Shipped', _('Shipped')),
     ('Complete', _('Complete')),
