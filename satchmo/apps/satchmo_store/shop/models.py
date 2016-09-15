@@ -1030,6 +1030,10 @@ class Order(models.Model):
 
         self.total = Decimal(item_sub_total + self.shipping_sub_total + self.tax)
 
+        _total = self.total
+        signals.recalculate_total_done.send(self, total=_total)
+        self.total = _total
+
         if save:
             self.save()
 
