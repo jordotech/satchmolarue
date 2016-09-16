@@ -356,4 +356,4 @@ registration_sender = object()
 
 
 #custom order recalculate total
-recalculate_total_done = object()
+recalculate_total_done = django.dispatch.Signal()
