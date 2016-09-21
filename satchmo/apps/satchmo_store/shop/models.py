@@ -902,7 +902,8 @@ class Order(models.Model):
         """
         if not self.pk:
             self.time_stamp = timezone.now()
-            self.copy_addresses()
+            if self.contact.addressbook_set.all().count() > 0:
+                self.copy_addresses()
         super(Order, self).save(**kwargs) # Call the "real" save() method.
 
     def invoice(self):
