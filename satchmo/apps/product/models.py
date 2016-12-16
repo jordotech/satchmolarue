@@ -1180,6 +1180,9 @@ class Product(models.Model):
 
         return context
 
+    def related_label(self):
+        return u"%s [SKU:%s]" % (self.name, self.sku)
+
 class ProductTranslation(models.Model):
     """A specific language translation for a `Product`.  This is intended for all descriptions which are not the
     default settings.LANGUAGE.
