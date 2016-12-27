@@ -14,7 +14,8 @@ from django.db.models import Q
 from django.utils.encoding import smart_str
 from django.utils.translation import get_language, ugettext, ugettext_lazy as _
 from l10n.utils import moneyfmt, lookup_translation
-from livesettings import config_value, SettingNotSet, config_value_safe
+from livesettings.functions import config_value, config_value_safe
+from livesettings.models import SettingNotSet
 from prices import get_product_quantity_price, get_product_quantity_adjustments
 from product import active_product_types
 from product.prices import PriceAdjustmentCalc
@@ -117,7 +118,7 @@ class Category(models.Model):
     """
     Basic hierarchical category model for storing products
     """
-    site = models.ForeignKey(Site, verbose_name=_('Site'))
+    site = models.ManyToManyField(Site, verbose_name=_('Site'))
     name = models.CharField(_("Name"), max_length=200)
     slug = models.SlugField(_("Slug"), help_text=_("Used for URLs, auto-generated from name if blank"), blank=True)
     parent = models.ForeignKey('self', blank=True, null=True,
@@ -128,7 +129,7 @@ class Category(models.Model):
         help_text="Optional")
     ordering = models.IntegerField(_("Ordering"), default=0, help_text=_("Override alphabetical order in category display"))
     is_active = models.BooleanField(_("Active"), default=True, blank=True)
-    related_categories = models.ManyToManyField('self', blank=True, null=True,
+    related_categories = models.ManyToManyField('self', blank=True,
         verbose_name=_('Related Categories'), related_name='related_categories')
     objects = CategoryManager()
 
@@ -156,17 +157,19 @@ class Category(models.Model):
         """Variations determines whether or not product variations are included
         in most templates we are not returning all variations, just the parent product.
         """
+        site = Site.objects.get_current()
+        
         if not include_children:
-            qry = self.product_set.all()
+            qry = self.product_set.filter(site=site)
         else:
             cats = self.get_all_children(include_self=True)
-            qry = Product.objects.filter(category__in=cats)
+            qry = Product.objects.filter(site=site, category__in=cats)
 
         if variations:
-            slugs = qry.filter(site=self.site, active=True, **kwargs).values_list('slug',flat=True)
+            slugs = qry.filter(site=site, active=True, **kwargs).values_list('slug',flat=True)
             return Product.objects.filter(Q(productvariation__parent__product__slug__in = slugs)|Q(slug__in = slugs)).prefetch_related('productimage_set')
         else:
-            return qry.filter(site=self.site, active=True, productvariation__parent__isnull=True, **kwargs).prefetch_related('productimage_set')
+            return qry.filter(site=site, active=True, productvariation__parent__isnull=True, **kwargs).prefetch_related('productimage_set')
  
 
     def translated_attributes(self, language_code=None):
@@ -243,9 +246,10 @@ class Category(models.Model):
 
         if not self.slug:
             self.slug = slugify(self.name, instance=self)
-        cache_key = "cat-%s" % self.site.id
-        cache.delete(cache_key)
         super(Category, self).save(**kwargs)
+        for site in self.site.all().only('id'):
+            cache_key = "cat-%s" % site.id
+            cache.delete(cache_key)        
 
     def _flatten(self, L):
         """
@@ -284,10 +288,10 @@ class Category(models.Model):
         return flat_list
 
     class Meta:
-        ordering = ['site', 'parent__ordering', 'parent__name', 'ordering', 'name']
+        ordering = ['parent__ordering', 'parent__name', 'ordering', 'name']
         verbose_name = _("Category")
         verbose_name_plural = _("Categories")
-        unique_together = ('site', 'slug')
+        # unique_together = ('site', 'slug')
 
 class CategoryTranslation(models.Model):
     """A specific language translation for a `Category`.  This is intended for all descriptions which are not the
@@ -438,11 +442,11 @@ class Discount(models.Model):
     Allows for multiple types of discounts including % and dollar off.
     Also allows finite number of uses.
     """
-    site = models.ForeignKey(Site, verbose_name=_('site'))
+    site = models.ManyToManyField(Site, verbose_name=_('site'))
     description = models.CharField(_("Description"), max_length=100)
     code = models.CharField(_("Discount Code"), max_length=20, unique=True,
         help_text=_("Coupon Code"))
-    active = models.BooleanField(_("Active"))
+    active = models.BooleanField(_("Active"), default=False)
     amount = CurrencyField(_("Discount Amount"), decimal_places=2,
         max_digits=8, blank=True, null=True,
         help_text=_("Enter absolute discount amount OR percentage."))
@@ -463,10 +467,8 @@ class Discount(models.Model):
         default='NONE', blank=True, null=True, max_length=10)
     allValid = models.BooleanField(_("All products?"), default=False,
         help_text=_('Apply this discount to all discountable products? If this is false you must select products below in the "Valid Products" section.'))
-    valid_products = models.ManyToManyField('Product', verbose_name=_("Valid Products"),
-        blank=True, null=True)
-    valid_categories = models.ManyToManyField('Category', verbose_name=_("Valid Categories"),
-        blank=True, null=True)
+    valid_products = models.ManyToManyField('Product', verbose_name=_("Valid Products"), blank=True)
+    valid_categories = models.ManyToManyField('Category', verbose_name=_("Valid Categories"), blank=True)
 
     objects = DiscountManager()
 
@@ -578,7 +580,8 @@ class Discount(models.Model):
     def save(self, **kwargs):
         if self.automatic:
             today = datetime.date.today()
-            keyedcache.cache_delete('discount', 'sale', self.site, today)
+            for site in self.site.all():
+                keyedcache.cache_delete('discount', 'sale', site, today)
         super(Discount, self).save(**kwargs)
 
 
@@ -678,7 +681,7 @@ class OptionGroup(models.Model):
     A set of options that can be applied to an item.
     Examples - Size, Color, Shape, etc
     """
-    site = models.ForeignKey(Site, verbose_name=_('Site'))
+    site = models.ManyToManyField(Site, verbose_name=_('Site'))
     name = models.CharField(_("Name of Option Group"), max_length=50,
         help_text=_("This will be the text displayed on the product page."))
     description = models.CharField(_("Detailed Description"), max_length=100,
@@ -824,11 +827,15 @@ class ProductManager(models.Manager):
         return query
 
 
+def get_taxable():
+    return config_value('TAX', 'PRODUCTS_TAXABLE_BY_DEFAULT')
+    
+
 class Product(models.Model):
     """
     Root class for all Products
     """
-    site = models.ForeignKey(Site, verbose_name=_('Site'))
+    site = models.ManyToManyField(Site, verbose_name=_('Site'))
     name = models.CharField(_("Full Name"), max_length=255, blank=False,
         help_text=_("This is what the product will be called in the default site language.  To add non-default translations, use the Product Translation section below."))
     slug = models.SlugField(_("Slug Name"), blank=True,
@@ -852,10 +859,10 @@ class Product(models.Model):
     width_units = models.CharField(_("Width units"), max_length=3, null=True, blank=True)
     height = models.DecimalField(_("Height"), max_digits=6, decimal_places=2, null=True, blank=True)
     height_units = models.CharField(_("Height units"), max_length=3, null=True, blank=True)
-    related_items = models.ManyToManyField('self', blank=True, null=True, verbose_name=_('Related Items'), related_name='related_products')
-    also_purchased = models.ManyToManyField('self', blank=True, null=True, verbose_name=_('Previously Purchased'), related_name='also_products')
+    related_items = models.ManyToManyField('self', blank=True, verbose_name=_('Related Items'), related_name='related_products')
+    also_purchased = models.ManyToManyField('self', blank=True, verbose_name=_('Previously Purchased'), related_name='also_products')
     total_sold = models.DecimalField(_("Total sold"),  max_digits=18, decimal_places=6, default='0')
-    taxable = models.BooleanField(_("Taxable"), default=lambda: config_value('TAX', 'PRODUCTS_TAXABLE_BY_DEFAULT'))
+    taxable = models.BooleanField(_("Taxable"), default=get_taxable)
     taxClass = models.ForeignKey('TaxClass', verbose_name=_('Tax Class'), blank=True, null=True, help_text=_("If it is taxable, what kind of tax?"))
     shipclass = models.CharField(_('Shipping'), choices=SHIP_CLASS_CHOICES, default="DEFAULT", max_length=10,
         help_text=_("If this is 'Default', then we'll use the product type to determine if it is shippable."))
@@ -1004,10 +1011,10 @@ class Product(models.Model):
             kwargs={'product_slug': self.slug})
 
     class Meta:
-        ordering = ('site', 'ordering', 'name')
+        ordering = ('ordering', 'name')
         verbose_name = _("Product")
         verbose_name_plural = _("Products")
-        unique_together = (('site', 'sku'),('site','slug'))
+        #unique_together = (('site', 'sku'),('site','slug'))
 
     def save(self, **kwargs):
         if not self.pk:
@@ -1180,9 +1187,6 @@ class Product(models.Model):
 
         return context
 
-    def related_label(self):
-        return u"%s [SKU:%s]" % (self.name, self.sku)
-
 class ProductTranslation(models.Model):
     """A specific language translation for a `Product`.  This is intended for all descriptions which are not the
     default settings.LANGUAGE.
@@ -1232,16 +1236,17 @@ class ProductPriceLookupManager(models.Manager):
 
         objs = []
         for qty, price in pricelist:
-            obj = ProductPriceLookup(productslug=product.slug,
-                siteid=product.site_id,
-                active=product.active,
-                price=price,
-                quantity=qty,
-                discountable=product.is_discountable,
-                items_in_stock=product.items_in_stock,
-                productimage_set=product.productimage_set)
-            obj.save()
-            objs.append(obj)
+            for site in product.site.all():            
+                obj = ProductPriceLookup(productslug=product.slug,
+                                         siteid=site.pk,
+                                         active=product.active,
+                                         price=price,
+                                         quantity=qty,
+                                         discountable=product.is_discountable,
+                                         items_in_stock=product.items_in_stock,
+                                         productimage_set=product.productimage_set)
+                obj.save()
+                objs.append(obj)
         return objs
 
     def create_for_configurableproduct(self, configproduct):
@@ -1262,21 +1267,22 @@ class ProductPriceLookupManager(models.Manager):
 
         objs = []
         for qty, price in pricelist:
-            obj = ProductPriceLookup(productslug=product.slug,
-                parentid=parent.pk,
-                siteid=product.site_id,
-                active=product.active,
-                price=price,
-                quantity=qty,
-                key=variation.optionkey,
-                discountable=product.is_discountable,
-                items_in_stock=product.items_in_stock)
-            obj.save()
-            objs.append(obj)
+            for site in product.site.all():
+                obj = ProductPriceLookup(productslug=product.slug,
+                                         parentid=parent.pk,
+                                         siteid=site.pk,
+                                         active=product.active,
+                                         price=price,
+                                         quantity=qty,
+                                         key=variation.optionkey,
+                                         discountable=product.is_discountable,
+                                         items_in_stock=product.items_in_stock)
+                obj.save()
+                objs.append(obj)
         return objs
 
     def delete_for_product(self, product):
-        for obj in self.filter(productslug=product.slug, siteid=product.site.id):
+        for obj in self.filter(productslug=product.slug, siteid__in=list(product.site.all().values_list('pk', flat=True))):
             obj.delete()
 
     def rebuild_all(self, site=None):
@@ -1308,13 +1314,13 @@ class ProductPriceLookup(models.Model):
     details needed for productvariation display, without way too many database hits.
     """
     siteid = models.IntegerField()
-    key = models.CharField(max_length=200, null=True)
+    key = models.CharField(max_length=60, null=True)
     parentid = models.IntegerField(null=True)
     productslug = models.CharField(max_length=255, db_index = True)
     price = models.DecimalField(max_digits=14, decimal_places=6)
     quantity = models.DecimalField(max_digits=18, decimal_places=6)
-    active = models.BooleanField()
-    discountable = models.BooleanField()
+    active = models.BooleanField(default=False)
+    discountable = models.BooleanField(default=False)
     items_in_stock = models.DecimalField(max_digits=18, decimal_places=6)
 
     objects = ProductPriceLookupManager()

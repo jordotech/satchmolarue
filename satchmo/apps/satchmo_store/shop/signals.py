@@ -353,7 +353,3 @@ contact_sender = object()
 
 # satchmo_store.registration
 registration_sender = object()
-
-
-#custom order recalculate total
-recalculate_total_done = django.dispatch.Signal()

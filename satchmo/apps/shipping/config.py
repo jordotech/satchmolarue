@@ -1,8 +1,11 @@
-from django.conf import settings
 from django.utils.translation import ugettext_lazy as _
-from livesettings import *
+from livesettings.values import StringValue,ConfigurationGroup, BooleanValue, MultipleStringValue
+from livesettings.functions import config_register, config_value
 from satchmo_store.shop import get_satchmo_setting
-from satchmo_utils import is_string_like, load_module
+from satchmo_utils import load_module
+import logging
+
+log = logging.getLogger('shipping.config')
 
 SHIPPING_GROUP = ConfigurationGroup('SHIPPING', _('Shipping Settings'))
 
@@ -76,7 +79,7 @@ def shipping_methods():
     modules = config_value('SHIPPING', 'MODULES')
     log.debug('Getting shipping methods: %s', modules)
     for m in modules:
-        module = load_module(m)
+        module = load_module(".".join([m, 'methods']))
         methods.extend(module.get_methods())
     return methods
 

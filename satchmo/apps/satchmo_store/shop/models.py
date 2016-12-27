@@ -14,7 +14,7 @@ from django.utils.translation import ugettext, ugettext_lazy as _
 from django.utils import timezone
 from l10n.models import Country
 from l10n.utils import moneyfmt
-from livesettings import ConfigurationSettings, config_value
+from livesettings.functions import ConfigurationSettings, config_value
 from product.models import Discount, Product, Price, get_product_quantity_adjustments
 from product.prices import PriceAdjustmentCalc, PriceAdjustment
 from satchmo_store.contact.models import Contact
@@ -586,8 +586,6 @@ ORDER_STATUS = (
     ('New', _('New')),
     ('Blocked', _('Blocked')),
     ('In Process', _('In Process')),
-    ('Backordered', _('Backordered')),
-    ('Front Office', _('Front Office')),
     ('Billed', _('Billed')),
     ('Shipped', _('Shipped')),
     ('Complete', _('Complete')),
@@ -902,8 +900,7 @@ class Order(models.Model):
         """
         if not self.pk:
             self.time_stamp = timezone.now()
-            if self.contact.addressbook_set.all().count() > 0:
-                self.copy_addresses()
+            self.copy_addresses()
         super(Order, self).save(**kwargs) # Call the "real" save() method.
 
     def invoice(self):
@@ -984,20 +981,6 @@ class Order(models.Model):
             itemprices.append(lineitem.sub_total)
             fullprices.append(lineitem.line_item_price)
 
-        shipprice = Price()
-        shipprice.price = self.shipping_cost
-        shipadjust = PriceAdjustmentCalc(shipprice)
-        if 'Shipping' in discounts:
-            shipadjust += PriceAdjustment('discount', _('Discount'), discounts['Shipping'])
-
-        signals.satchmo_shipping_price_query.send(self, adjustment=shipadjust)
-        shipdiscount = shipadjust.total_adjustment()
-        self.shipping_discount = shipdiscount
-        total_discount += shipdiscount
-        #log.debug('total_discount (+ship): %s', total_discount)
-
-        self.discount = total_discount
-
         if itemprices:
             item_sub_total = reduce(operator.add, itemprices)
         else:
@@ -1009,6 +992,20 @@ class Order(models.Model):
             full_sub_total = zero
 
         self.sub_total = full_sub_total
+
+        shipprice = Price()
+        shipprice.price = self.shipping_cost
+        shipadjust = PriceAdjustmentCalc(shipprice)
+        if 'Shipping' in discounts:
+            shipadjust += PriceAdjustment('discount', _('Discount'), discounts['Shipping'])
+
+        signals.satchmo_shipping_price_query.send(self, adjustment=shipadjust, item_discount=total_discount)
+        shipdiscount = shipadjust.total_adjustment()
+        self.shipping_discount = shipdiscount
+        total_discount += shipdiscount
+        #log.debug('total_discount (+ship): %s', total_discount)
+
+        self.discount = total_discount
 
         taxProcessor = get_tax_processor(self)
         totaltax, taxrates = taxProcessor.process()
@@ -1033,9 +1030,6 @@ class Order(models.Model):
 
         if save:
             self.save()
-
-        signals.recalculate_total_done.send(self)
-
 
     def shippinglabel(self):
         url = urlresolvers.reverse('satchmo_print_shipping', None, None, {'doc' : 'shippinglabel', 'id' : self.id})
@@ -1070,7 +1064,7 @@ class Order(models.Model):
 
     def _paid_in_full(self):
         """True if total has been paid"""
-        return self.balance == Decimal('0.00')
+        return self.balance <= Decimal('0.00')
     paid_in_full = property(fget=_paid_in_full)
 
     def _has_downloads(self):
@@ -1172,7 +1166,9 @@ class OrderItem(models.Model):
         return self.product.translated_name()
 
     def _get_category(self):
-        return(self.product.get_category.translated_name())
+        category = self.product.get_category
+        if category:
+            return category.translated_name()            
     category = property(_get_category)
 
     def _is_shippable(self):

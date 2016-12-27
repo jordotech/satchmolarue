@@ -4,8 +4,10 @@ from django.utils.http import urlencode
 from django.utils.translation import ugettext_lazy as _
 from django.utils import timezone
 from payment.modules.base import BasePaymentProcessor, ProcessorResult
+from product.models import Discount
 from satchmo_store.shop.models import Config
 from satchmo_utils.numbers import trunc_decimal
+from satchmo_utils import add_month
 from tax.utils import get_tax_processor
 from xml.dom import minidom
 import random
@@ -230,7 +232,9 @@ class PaymentProcessor(BasePaymentProcessor):
         }
         trans['order'] = self.order
         trans['card'] = self.order.credit_card
-        trans['card_expiration'] =  "%4i-%02i" % (self.order.credit_card.expire_year, self.order.credit_card.expire_month)
+        start_date = timezone.now().date()
+        if self.order.credit_card:
+            trans['card_expiration'] =  "%4i-%02i" % (self.order.credit_card.expire_year, self.order.credit_card.expire_month)
 
         translist = []
         taxer = get_tax_processor(user = self.order.contact.user)
@@ -256,17 +260,38 @@ class PaymentProcessor(BasePaymentProcessor):
                     self.log.warn("Trial expiration period is less than one recurring billing cycle. " +
                         "Authorize does not allow this, so the trial period has been adjusted to be equal to one recurring cycle.")
                     trial_occurrences = 1
+                    
+                # add discounts for trial_amount and amount for recurring subscriptions                       
+                if subscription.discount:
+                    discount = Discount.objects.by_code(self.order.discount_code)
+                    if discount.amount:
+                        amount = amount - discount.amount if amount > discount.amount else Decimal("0")
+                        trial_amount = trial_amount - discount.amount if trial_amount > discount.amount else Decimal("0")
+                    elif discount.percentage:
+                        discount_result = amount * discount.percentage / 100
+                        amount -= discount_result.quantize(Decimal("0.01"))
+                        discount_result = trial_amount * discount.percentage / 100
+                        trial_amount -= discount_result.quantize(Decimal("0.01"))                        
+                        
             else:
                 trial_occurrences = 0
                 trial_amount = Decimal('0.00')
                 amount = subscription.total_with_tax
 
-            occurrences = sub.recurring_times + trial_occurrences
+            occurrences = sub.recurring_times or 9999
+            occurrences += trial_occurrences
             if occurrences > 9999:
                 occurrences = 9999
 
             subtrans['occurrences'] = occurrences
             subtrans['trial_occurrences'] = trial_occurrences
+            subtrans['start_date'] = start_date
+            if trial and not trial_amount:
+                if sub.expire_unit == "DAY":
+                    subtrans['start_date'] = start_date + timezone.timedelta(trial.expire_length)
+                else:
+                    subtrans['start_date'] = add_month(start_date, n=trial.expire_length)
+                trial = None            
             subtrans['trial'] = trial
             subtrans['trial_amount'] = trunc_decimal(trial_amount, 2)
             subtrans['amount'] = trunc_decimal(amount, 2)
@@ -278,7 +303,8 @@ class PaymentProcessor(BasePaymentProcessor):
             charged_today = trunc_decimal(charged_today, 2)
 
             subtrans['charged_today'] = charged_today
-            translist.append(subtrans)
+            if trial_amount or amount:
+                translist.append(subtrans)
 
         return translist
 
@@ -338,9 +364,11 @@ class PaymentProcessor(BasePaymentProcessor):
             'x_state' : order.bill_state,
             'x_zip' : order.bill_postal_code,
             'x_country': order.bill_country,
-            'x_phone' : order.contact.primary_phone.phone,
             'x_email' : order.contact.email,
             }
+        
+        if order.contact.primary_phone:
+            trans['custBillData']['x_phone'] = order.contact.primary_phone.phone
 
         trans['custShipData'] = {
             'x_ship_to_first_name' : order.ship_first_name,
@@ -408,6 +436,7 @@ class PaymentProcessor(BasePaymentProcessor):
                     results.append(ProcessorResult(self.key, success, response, payment=payment))
             else:
                 self.log.info("Failed to process recurring subscription, %s: %s", reason, response)
+                results = ProcessorResult(self.key, success, response)
                 break
 
         return success, results
@@ -535,7 +564,7 @@ if __name__ == "__main__":
     sure everything is ok
     """
     import os
-    from livesettings import config_get_group
+    from livesettings.functions import config_get_group
 
     # Set up some dummy classes to mimic classes being passed through Satchmo
     class testContact(object):

@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib.auth import login, REDIRECT_FIELD_NAME
-from django.contrib.sites.models import Site, RequestSite
+from django.contrib.sites.models import Site
+from django.contrib.sites.requests import RequestSite
 from django.core import urlresolvers
 from django.http import HttpResponseRedirect, QueryDict
 from django.shortcuts import render_to_response
@@ -10,7 +11,7 @@ from django.views.decorators.cache import never_cache
 from django.views.generic.base import TemplateView
 from forms import RegistrationAddressForm, RegistrationForm, EmailAuthenticationForm
 from l10n.models import Country
-from livesettings import config_get_group, config_value
+from livesettings.functions import config_get_group, config_value
 from satchmo_store.accounts.mail import send_welcome_email
 from satchmo_store.accounts import signals
 from satchmo_store.contact import CUSTOMER_ID

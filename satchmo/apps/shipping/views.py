@@ -17,11 +17,14 @@ from django.http import HttpResponse
 from django.template import loader, RequestContext
 from django.shortcuts import get_object_or_404
 from django.utils.encoding import smart_str
-from django.utils.importlib import import_module
+try: 
+    from importlib import import_module
+except ImportError:
+    from django.utils.importlib import import_module    
 from django.views.decorators.cache import never_cache
 from satchmo_store.shop.models import Order
 from satchmo_store.shop.models import Config
-from livesettings import config_value
+from livesettings.functions import config_value
 
 
 class ConverterError(Exception):
@@ -106,7 +109,7 @@ class FileRenderMixin(BaseRenderer):
     def render(self, request, context):
         filename = self.get_filename(request, context)
         content = self.convert(self.get_content(request, context))
-        response = HttpResponse(mimetype=self.mimetype)
+        response = HttpResponse(content_type=self.mimetype)
         if config_value('SHIPPING','DOWNLOAD_PDFS'):
             content_disposition = 'attachment; filename=%s' % filename
             response['Content-Disposition'] = content_disposition

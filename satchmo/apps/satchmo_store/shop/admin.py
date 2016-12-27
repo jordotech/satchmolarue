@@ -39,6 +39,12 @@ class OrderItem_Inline(admin.TabularInline):
     model = OrderItem
     extra = 3
     raw_id_fields = ('product',)
+    list_select_related = True
+    fields = ('product', 'product_sku', 'quantity', 'unit_price', 'unit_tax', 'line_item_price', 'tax', 'expire_date', 'completed', 'discount')
+    readonly_fields = ('product_sku',)
+
+    def product_sku(self, order_item):
+        return order_item.product.sku
 
 class OrderItemDetail_Inline(admin.TabularInline):
     model = OrderItemDetail
@@ -68,7 +74,7 @@ class OrderTaxDetail_Inline(admin.TabularInline):
     model = OrderTaxDetail
     extra = 1
 
-class OrderOptions(AutocompleteAdmin):
+class OrderOptions(admin.ModelAdmin):
     fieldsets = (
         (None, {'fields': ('site', 'contact', 'method', 'status', 'discount_code', 'notes')}), (_('Shipping Method'), {'fields':
             ('shipping_method', 'shipping_description')}), (_('Shipping Address'), {'classes': ('collapse',), 'fields':
@@ -79,8 +85,8 @@ class OrderOptions(AutocompleteAdmin):
     list_filter = ['time_stamp', 'status']
     date_hierarchy = 'time_stamp'
     search_fields = ('contact__first_name', 'contact__last_name', 'contact__email')
-    related_search_fields = {'contact': ('first_name', 'last_name', 'email')}
-    related_string_functions = {'contact': lambda c: u"%s &lt;%s&gt;" % (c.full_name, c.email)}
+    # related_search_fields = {'contact': ('first_name', 'last_name', 'email')}
+    # related_string_functions = {'contact': lambda c: u"%s &lt;%s&gt;" % (c.full_name, c.email)}
     inlines = [OrderItem_Inline, OrderStatus_Inline, OrderVariable_Inline,
         OrderTaxDetail_Inline, OrderAuthorizationDetail_Inline,
         OrderPaymentDetail_Inline, OrderPaymentFailureDetail_Inline]

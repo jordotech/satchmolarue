@@ -13,7 +13,7 @@ from django.core.management.color import no_style
 from django.db import transaction
 from django.http import HttpResponse
 from django.utils.translation import ugettext as _
-from livesettings import config_value
+from livesettings.functions import config_value
 from product.models import Product, Price, Option
 from satchmo_utils.unique_id import slugify
 import logging
@@ -477,7 +477,7 @@ class VariationManagerForm(forms.Form):
                 self.fields[slugkey] = sf
                 self.slugdict[key] = slugkey
 
-    def _save(self, request):
+    def save(self, request):
         self.full_clean()
         data = self.cleaned_data
         optiondict = _get_optiondict()
@@ -497,8 +497,6 @@ class VariationManagerForm(forms.Form):
                             self._delete_variation(opts, request)
                 except KeyError:
                     pass
-
-    save = transaction.commit_on_success(_save)
 
     def _create_variation(self, opts, key, data, request):
         namekey = "name__" + key

@@ -223,9 +223,6 @@ class Contact(models.Model):
         verbose_name = _("Contact")
         verbose_name_plural = _("Contacts")
 
-    def related_label(self):
-        return u"%s (%s)" % (self.full_name, self.email)
-
 PHONE_CHOICES = (
     ('Work', _('Work')),
     ('Home', _('Home')),
