@@ -1314,7 +1314,7 @@ class ProductPriceLookup(models.Model):
     details needed for productvariation display, without way too many database hits.
     """
     siteid = models.IntegerField()
-    key = models.CharField(max_length=60, null=True)
+    key = models.CharField(max_length=200, null=True)
     parentid = models.IntegerField(null=True)
     productslug = models.CharField(max_length=255, db_index = True)
     price = models.DecimalField(max_digits=14, decimal_places=6)
