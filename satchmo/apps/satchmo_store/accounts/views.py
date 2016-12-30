@@ -31,7 +31,7 @@ def emaillogin(request, template_name='registration/login.html',
     auth_form=EmailAuthenticationForm, redirect_field_name=REDIRECT_FIELD_NAME):
     "Displays the login form and handles the login action. Altered to use the EmailAuthenticationForm"
 
-    redirect_to = request.REQUEST.get(redirect_field_name, '')
+    redirect_to = request.GET.get(redirect_field_name, '')
 
     # Avoid redirecting to logout if the user clicked on login after logout
     if redirect_to == urlresolvers.reverse('auth_logout'):
@@ -268,7 +268,7 @@ def login_signup(request,
                  handler_kwargs = {}):
     """Display/handle a combined login and create account form"""
 
-    redirect_to = request.REQUEST.get(REDIRECT_FIELD_NAME, '')
+    redirect_to = request.GET.get(REDIRECT_FIELD_NAME, '')
     handler_kwargs['redirect'] = redirect_to
 
     loginform = None
