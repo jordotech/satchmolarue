@@ -1096,7 +1096,7 @@ class Order(models.Model):
             self.shipping_cost = Decimal('0.00')
         if self.shipping_discount is None:
             self.shipping_discount = Decimal('0.00')
-        return self.shipping_cost-self.shipping_discount
+        return Decimal(self.shipping_cost)-Decimal(self.shipping_discount)
     shipping_sub_total = property(_shipping_sub_total)
 
     def _shipping_tax(self):
