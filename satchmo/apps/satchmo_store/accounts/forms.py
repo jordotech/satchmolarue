@@ -1,7 +1,8 @@
 from django import forms
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.forms import AuthenticationForm
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+User = get_user_model()
 from django.contrib.sites.models import Site
 from django.utils.translation import ugettext_lazy as _, ugettext
 from satchmo_store.accounts.mail import send_welcome_email

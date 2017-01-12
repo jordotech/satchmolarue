@@ -4,7 +4,8 @@ First, we try simple concatenation of first and last name.
 If that doesn't work, we add random numbers to the name
 """
 
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+User = get_user_model()
 from django.utils.encoding import smart_unicode
 from htmlentitydefs import name2codepoint
 from satchmo_utils import random_string
