@@ -5,7 +5,6 @@ If that doesn't work, we add random numbers to the name
 """
 
 from django.contrib.auth import get_user_model
-User = get_user_model()
 from django.utils.encoding import smart_unicode
 from htmlentitydefs import name2codepoint
 from satchmo_utils import random_string
@@ -39,6 +38,7 @@ def _id_generator(first_name, last_name, email):
         yield _alnum('%s_%s' % (id[:_ID_MIN_LENGTH], random_string(_ID_MIN_LENGTH, True)))[:_ID_MAX_LENGTH]
 
 def generate_id(first_name='', last_name='', email=''):
+    User = get_user_model()
     valid_id = False
     gen = _id_generator(first_name, last_name, email)
     test_name = gen.next()
