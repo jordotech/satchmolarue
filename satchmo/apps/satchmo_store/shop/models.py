@@ -1030,6 +1030,7 @@ class Order(models.Model):
 
         if save:
             self.save()
+        signals.recalculate_total_done.send(self)
 
     def shippinglabel(self):
         url = urlresolvers.reverse('satchmo_print_shipping', None, None, {'doc' : 'shippinglabel', 'id' : self.id})
