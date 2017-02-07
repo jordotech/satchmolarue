@@ -1360,7 +1360,7 @@ class OrderPaymentManager(models.Manager):
 
 class OrderPayment(OrderPaymentBase):
     order = models.ForeignKey(Order, related_name="payments")
-
+    contact_id = models.IntegerField("Contact id", blank=True, null=True)
     objects = OrderPaymentManager()
 
     def __unicode__(self):
