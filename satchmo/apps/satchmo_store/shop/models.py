@@ -548,7 +548,20 @@ class CartItem(models.Model):
     has_details = property(_has_details)
 
     def __unicode__(self):
-        money_format = force_unicode(moneyfmt(self.line_total))
+        #the original version of this creates an infinite loop which breaks some signals
+        #money_format = force_unicode(moneyfmt(self.line_total))
+        """
+        BUG:
+        ('/usr/local/lib/python2.7/site-packages/satchmo_store/shop/models.py', 551, '__unicode__', "money_format = force_unicode(moneyfmt(self.line_total))"), 
+        ('/usr/local/lib/python2.7/site-packages/satchmo_store/shop/models.py', 514, '_get_line_total', 'return self.unit_price * self.quantity'), 
+        ('/usr/local/lib/python2.7/site-packages/satchmo_store/shop/models.py', 484, '_get_line_unitprice', 'signals.satchmo_cartitem_price_query.send(self, cartitem=self)'), 
+        ('/usr/local/lib/python2.7/site-packages/django/dispatch/dispatcher.py', 195, 'send', 'print "signal_send",sender'), 
+        ('/usr/local/lib/python2.7/site-packages/django/db/models/base.py', 474, '__str__', "return force_text(self).encode('utf-8')"), 
+        ('/usr/local/lib/python2.7/site-packages/django/utils/encoding.py', 78, 'force_text', 's = six.text_type(s)'), 
+        ('/usr/local/lib/python2.7/site-packages/satchmo_store/shop/models.py', 551, '__unicode__', "money_format = force_unicode(moneyfmt(self.line_total))")
+        ('/usr/local/lib/python2.7/site-packages/satchmo_store/shop/models.py', 514, '_get_line_total', 'return self.unit_price * self.quantity'), 
+        """
+        money_format = ''
         return u'%s - %s %s' % (self.quantity, self.product.name,
             money_format)
 
