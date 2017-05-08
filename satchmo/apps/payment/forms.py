@@ -418,12 +418,12 @@ class CreditPayShipForm(SimplePayShipForm):
     ccv = forms.CharField(max_length=4, label='Sec code', widget=forms.TextInput(attrs={'autocomplete':'off'}))
 
     def __init__(self, request, paymentmodule, *args, **kwargs):
-        creditchoices = paymentmodule.CREDITCHOICES.choice_values
+        #creditchoices = paymentmodule.CREDITCHOICES.choice_values
         super(CreditPayShipForm, self).__init__(request, paymentmodule, *args, **kwargs)
 
         self.cc = None
 
-        self.fields['credit_type'].choices = creditchoices
+        #self.fields['credit_type'].choices = creditchoices # Caused huge headache with keyed cache, set in
 
         num_years = config_value('PAYMENT', 'CC_NUM_YEARS')
         year_now = datetime.date.today().year
