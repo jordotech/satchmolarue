@@ -19,7 +19,7 @@ from product.models import Discount, Product, Price, get_product_quantity_adjust
 from product.prices import PriceAdjustmentCalc, PriceAdjustment
 from satchmo_store.contact.models import Contact
 from satchmo_utils.fields import CurrencyField
-from satchmo_utils.numbers import trunc_decimal
+from satchmo_utils.numbers import trunc_decimal, round_decimal
 import shipping.fields
 import payment.config
 from satchmo_utils.iterchoices import iterchoices_db
@@ -780,7 +780,7 @@ class Order(models.Model):
     def _balance(self):
         if self.total is None:
             self.force_recalculate_total(save=True)
-        return trunc_decimal(self.total-self.balance_paid, 2)
+        return round_decimal(self.total-self.balance_paid, 2)
 
     balance = property(fget=_balance)
 
