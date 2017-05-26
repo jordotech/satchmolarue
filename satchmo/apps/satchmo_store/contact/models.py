@@ -152,7 +152,9 @@ class Contact(models.Model):
     email = models.EmailField(_("Email"), blank=True, max_length=75)
     notes = models.TextField(_("Notes"), max_length=500, blank=True)
     create_date = models.DateField(_("Creation date"))
-
+    merge_parent = models.ForeignKey('contact.Contact', blank=True, null=True,
+                                     related_name="merge_children",
+                                     help_text="The contact object this one was merged into.")
     objects = ContactManager()
 
     def _get_full_name(self):
