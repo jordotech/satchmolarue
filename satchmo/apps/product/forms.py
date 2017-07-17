@@ -427,7 +427,7 @@ class VariationManagerForm(forms.Form):
                 optnames = [opt.value for opt in opts]
                 kw = {
                     'initial' : None,
-                    'label' : " ".join(optnames),
+                    'label' : " | ".join(optnames),
                     'required' : False
                 }
 
