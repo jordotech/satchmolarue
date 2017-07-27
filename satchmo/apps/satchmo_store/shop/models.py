@@ -957,8 +957,9 @@ class Order(models.Model):
             else:
                 qty = lineitem.quantity
 
-            adjustment = get_product_quantity_adjustments(lineitem.product, qty=qty)
 
+            '''
+            adjustment = get_product_quantity_adjustments(lineitem.product, qty=qty)
             if adjustment and adjustment.price:
                 baseprice = adjustment.price.price
                 finalprice = adjustment.final_price()
@@ -977,6 +978,8 @@ class Order(models.Model):
                     lineitem.line_item_price = baseprice * lineitem.quantity
                     log.debug('Adjusting lineitem unit price for %s. Full price=%s, discount=%s.  Final price for qty %d is %s',
                         lineitem.product.slug, baseprice, unitdiscount, lineitem.quantity, fullydiscounted)
+            '''
+
             if save:
                 lineitem.save()
 
