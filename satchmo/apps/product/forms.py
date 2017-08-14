@@ -408,7 +408,8 @@ class VariationManagerForm(forms.Form):
             configurableproduct = self.product.configurableproduct;
 
             for grp in configurableproduct.option_group.all():
-                optchoices = [("%i_%i" % (opt.option_group.id, opt.id), opt.name) for opt in grp.option_set.all()]
+                optchoices = [("%i_%i" % (opt.option_group.id, opt.id), "'%s' [%s]" % (opt.name, opt.value)) for opt in
+                              grp.option_set.all()]
                 kw = {
                     'label' : grp.name,
                     'widget' : forms.CheckboxSelectMultiple(),
