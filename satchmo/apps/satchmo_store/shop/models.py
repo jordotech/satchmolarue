@@ -756,20 +756,28 @@ class Order(models.Model):
         """
         shipaddress = self.contact.shipping_address
         billaddress = self.contact.billing_address
-        self.ship_addressee = shipaddress.addressee
-        self.ship_street1 = shipaddress.street1
-        self.ship_street2 = shipaddress.street2
-        self.ship_city = shipaddress.city
-        self.ship_state = shipaddress.state
-        self.ship_postal_code = shipaddress.postal_code
-        self.ship_country = shipaddress.country.iso2_code
-        self.bill_addressee = billaddress.addressee
-        self.bill_street1 = billaddress.street1
-        self.bill_street2 = billaddress.street2
-        self.bill_city = billaddress.city
-        self.bill_state = billaddress.state
-        self.bill_postal_code = billaddress.postal_code
-        self.bill_country = billaddress.country.iso2_code
+        if shipaddress:
+            try:
+                self.ship_addressee = shipaddress.addressee
+                self.ship_street1 = shipaddress.street1
+                self.ship_street2 = shipaddress.street2
+                self.ship_city = shipaddress.city
+                self.ship_state = shipaddress.state
+                self.ship_postal_code = shipaddress.postal_code
+                self.ship_country = shipaddress.country.iso2_code
+            except:
+                pass
+        if billaddress:
+            try:
+                self.bill_addressee = billaddress.addressee
+                self.bill_street1 = billaddress.street1
+                self.bill_street2 = billaddress.street2
+                self.bill_city = billaddress.city
+                self.bill_state = billaddress.state
+                self.bill_postal_code = billaddress.postal_code
+                self.bill_country = billaddress.country.iso2_code
+            except:
+                pass
 
     def remove_all_items(self):
         """Delete all items belonging to this order."""
