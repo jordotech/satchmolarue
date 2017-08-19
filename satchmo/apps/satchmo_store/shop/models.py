@@ -788,7 +788,8 @@ class Order(models.Model):
     def _balance(self):
         if self.total is None:
             self.force_recalculate_total(save=True)
-        return round_decimal(self.total-self.balance_paid, 2)
+        #return round_decimal(self.total-self.balance_paid, 2)
+        return round(self.total-self.balance_paid, 2)
 
     balance = property(fget=_balance)
 
