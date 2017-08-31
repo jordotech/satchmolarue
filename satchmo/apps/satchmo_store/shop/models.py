@@ -1040,7 +1040,19 @@ class Order(models.Model):
             moneyfmt(self.discount),
             moneyfmt(self.tax))
 
-        self.total = Decimal(item_sub_total + self.shipping_sub_total + self.tax)
+        lineitem_total = Decimal(0)
+
+
+        # This is larue project specific, need to move lineitems logic into satchmo
+        if 'larue_py.apps.LarueOrderConfig' in settings.INSTALLED_APPS:
+            try:
+                from larue_py.modules.larue_order.models import Lineitem
+                for item in Lineitem.objects.values('amount').filter(order_id=self.id):
+                    lineitem_total += item['amount']
+            except Exception, e:
+                pass
+
+        self.total = Decimal(item_sub_total + self.shipping_sub_total + self.tax + lineitem_total)
 
         if save:
             self.save()
