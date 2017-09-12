@@ -162,7 +162,11 @@ class RegistrationForm(forms.Form):
         signals.satchmo_registration.send(self, contact=contact, subscribed=subscribed, data=data)
 
         if not verify:
-            user = authenticate(username=username, password=password)
+            username_field = getattr(User, "USERNAME_FIELD", 'username')
+            if username_field == 'username':
+                user = authenticate(username=username, password=password)
+            else:
+                user = authenticate(username=email, password=password)
             login(request, user)
             send_welcome_email(email, first_name, last_name)
             signals.satchmo_registration_verified.send(self, contact=contact)
