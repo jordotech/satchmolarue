@@ -580,19 +580,20 @@ ORDER_CHOICES = (
     ('In Person', _('In Person')),
     ('Show', _('Show')),
 )
-
-ORDER_STATUS = (
-    ('Temp', _('Temp')),
-    ('New', _('New')),
-    ('Blocked', _('Blocked')),
-    ('In Process', _('In Process')),
-    ('Backordered', _('Backordered')),
-    ('Front Office', _('Front Office')),
-    ('Billed', _('Billed')),
-    ('Shipped', _('Shipped')),
-    ('Complete', _('Complete')),
-    ('Cancelled', _('Cancelled')),
-)
+ORDER_STATUS = getattr(settings, "ORDER_STATUS", None)
+if not ORDER_STATUS:
+    ORDER_STATUS = (
+        ('Temp', _('Temp')),
+        ('New', _('New')),
+        ('Blocked', _('Blocked')),
+        ('In Process', _('In Process')),
+        ('Backordered', _('Backordered')),
+        ('Front Office', _('Front Office')),
+        ('Billed', _('Billed')),
+        ('Shipped', _('Shipped')),
+        ('Complete', _('Complete')),
+        ('Cancelled', _('Cancelled')),
+    )
 
 class OrderManager(models.Manager):
     def from_request(self, request):
