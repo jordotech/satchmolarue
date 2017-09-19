@@ -471,6 +471,8 @@ class AddressBookForm(forms.Form):
     city = forms.CharField(max_length=30, label=_('City'), required=True)
     state = forms.CharField(max_length=30, label=_('State'), required=True)
     postal_code = forms.CharField(max_length=10, label=_('ZIP code/Postcode'), required=True)
+    is_default_shipping = forms.BooleanField(label=_('Make default shipping'), required=False)
+    is_default_billing = forms.BooleanField(label=_('Make default billing'), required=False)
 
     def __init__(self, *args, **kwargs):
         shop = kwargs.pop('shop', None)
