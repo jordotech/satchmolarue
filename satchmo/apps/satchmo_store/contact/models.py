@@ -226,6 +226,10 @@ class Contact(models.Model):
         verbose_name = _("Contact")
         verbose_name_plural = _("Contacts")
 
+    @staticmethod
+    def autocomplete_search_fields():
+        return 'last_name', 'first_name'
+
 PHONE_CHOICES = (
     ('Work', _('Work')),
     ('Home', _('Home')),
