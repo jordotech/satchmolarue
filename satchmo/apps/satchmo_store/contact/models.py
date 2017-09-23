@@ -302,6 +302,7 @@ class AddressBook(models.Model):
     city = models.CharField(_("City"), max_length=50)
     postal_code = models.CharField(_("Zip Code"), max_length=30)
     country = models.ForeignKey(Country, verbose_name=_("Country"))
+    phone = models.CharField(_("Phone Number"), blank=True, max_length=30,)
     is_default_shipping = models.BooleanField(_("Default Shipping Address"),
         default=False)
     is_default_billing = models.BooleanField(_("Default Billing Address"),
