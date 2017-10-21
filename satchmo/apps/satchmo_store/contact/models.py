@@ -296,6 +296,7 @@ class AddressBook(models.Model):
     description = models.CharField(_("Description"), max_length=20, blank=True,
         help_text=_('Description of address - Home, Office, Warehouse, etc.',))
     addressee = models.CharField(_("Addressee"), max_length=80)
+    company = models.CharField(_("Company"), max_length=80, blank=True)
     street1 = models.CharField(_("Street"), max_length=80)
     street2 = models.CharField(_("Street"), max_length=80, blank=True)
     state = models.CharField(_("State"), max_length=50, blank=True)

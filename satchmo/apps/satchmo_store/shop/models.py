@@ -28,7 +28,7 @@ import keyedcache
 import logging
 import operator
 import signals
-
+logger = logging.getLogger('orders')
 log = logging.getLogger('satchmo_store.shop.models')
 
 class NullConfig(object):
@@ -656,18 +656,22 @@ class Order(models.Model):
     site = models.ForeignKey(Site, verbose_name=_('Site'))
     contact = models.ForeignKey(Contact, verbose_name=_('Contact'))
     ship_addressee = models.CharField(_("Addressee"), max_length=61, blank=True)
+    ship_company = models.CharField(_("Company"), max_length=61, blank=True)
     ship_street1 = models.CharField(_("Street"), max_length=80, blank=True)
     ship_street2 = models.CharField(_("Street"), max_length=80, blank=True)
     ship_city = models.CharField(_("City"), max_length=50, blank=True)
     ship_state = models.CharField(_("State"), max_length=50, blank=True)
     ship_postal_code = models.CharField(_("Zip Code"), max_length=30, blank=True)
+    ship_phone = models.CharField(_("Phone"), max_length=30, blank=True)
     ship_country = models.CharField(_("Country"), max_length=2, blank=True)
     bill_addressee = models.CharField(_("Addressee"), max_length=61, blank=True)
+    bill_company = models.CharField(_("Company"), max_length=61, blank=True)
     bill_street1 = models.CharField(_("Street"), max_length=80, blank=True)
     bill_street2 = models.CharField(_("Street"), max_length=80, blank=True)
     bill_city = models.CharField(_("City"), max_length=50, blank=True)
     bill_state = models.CharField(_("State"), max_length=50, blank=True)
     bill_postal_code = models.CharField(_("Zip Code"), max_length=30, blank=True)
+    bill_phone = models.CharField(_("Phone"), max_length=30, blank=True)
     bill_country = models.CharField(_("Country"), max_length=2, blank=True)
     notes = models.TextField(_("Notes"), blank=True, null=True)
     sub_total = CurrencyField(_("Subtotal"),
@@ -756,26 +760,31 @@ class Order(models.Model):
         Copy the addresses so we know what the information was at time of order.
         """
         shipaddress = self.contact.shipping_address
+
         billaddress = self.contact.billing_address
         if shipaddress:
             try:
                 self.ship_addressee = shipaddress.addressee
+                self.ship_company = shipaddress.company
                 self.ship_street1 = shipaddress.street1
                 self.ship_street2 = shipaddress.street2
                 self.ship_city = shipaddress.city
                 self.ship_state = shipaddress.state
                 self.ship_postal_code = shipaddress.postal_code
+                self.ship_phone = shipaddress.phone
                 self.ship_country = shipaddress.country.iso2_code
             except:
                 pass
         if billaddress:
             try:
                 self.bill_addressee = billaddress.addressee
+                self.bill_company = billaddress.company
                 self.bill_street1 = billaddress.street1
                 self.bill_street2 = billaddress.street2
                 self.bill_city = billaddress.city
                 self.bill_state = billaddress.state
                 self.bill_postal_code = billaddress.postal_code
+                self.bill_phone = billaddress.phone
                 self.bill_country = billaddress.country.iso2_code
             except:
                 pass
