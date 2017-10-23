@@ -266,28 +266,12 @@ class ContactInfoForm(ProxyContactForm):
         if self._shippable and (not val) and field_name in self.required_shipping_data:
             raise forms.ValidationError(_('This field is required.'))
         return val
-        '''
-        if self.cleaned_data.get('copy_address'):
-            self.cleaned_data['ship_' + field_name] = clean_field(self, field_name)
-            return self.cleaned_data['ship_' + field_name]
-        else:
-            val = clean_field(self, 'ship_' + field_name)
-            # REQUIRED_SHIPPING_DATA doesn't contain 'ship_' prefix
-            if self._shippable and (not val) and field_name in self.required_shipping_data:
-                raise forms.ValidationError(_('This field is required.'))
-            return val
-        '''
+
 
     def clean_ship_street1(self):
         return self.ship_charfield_clean('street1')
 
-    '''
-    def clean_ship_street2(self):
-        if self.cleaned_data.get('copy_address'):
-            if 'street2' in self.cleaned_data:
-                self.cleaned_data['ship_street2'] = self.cleaned_data.get('street2')
-        return self.cleaned_data.get('ship_street2')
-    '''
+
 
     def clean_ship_city(self):
         return self.ship_charfield_clean('city')
@@ -320,12 +304,6 @@ class ContactInfoForm(ProxyContactForm):
 
     def clean_ship_state(self):
         data = self.cleaned_data.get('ship_state')
-        '''
-        if self.cleaned_data.get('copy_address'):
-            if 'state' in self.cleaned_data:
-                self.cleaned_data['ship_state'] = self.cleaned_data['state']
-            return self.cleaned_data['ship_state']
-        '''
 
         if self._local_only:
             country = self._default_country
@@ -408,6 +386,10 @@ class ContactInfoForm(ProxyContactForm):
 
         bill_address.is_default_billing = True
 
+        """ 
+        Note: We are forcing copy_address = False b/c it triggers copying billing=>shipping, 
+        our store does opposite direction, we handle it in a form subclass.
+        """
         # copy_address = data['copy_address']
         copy_address = False
 
@@ -452,36 +434,6 @@ class ContactInfoForm(ProxyContactForm):
         ship_address.contact = customer
         ship_address.save()
 
-        '''
-        if not copy_address and getattr(ship_address, "addressee", "") != getattr(bill_address, "addressee", ""):
-            if not ship_address or ship_address.id == bill_address.id:
-                ship_address = AddressBook()
-
-            for field in address_keys:
-                ship_field = 'ship_' + field
-                if (not changed_location) and field in ('state', 'country_id', 'city'):
-                    if getattr(ship_address, field) != data[ship_field]:
-                        changed_location = True
-                try:
-                    setattr(ship_address, field, data[ship_field])
-                except KeyError:
-                    pass
-            ship_address.is_default_shipping = True
-            ship_address.is_default_billing = False
-            ship_address.contact = customer
-            ship_address.save()
-        '''
-
-        '''
-        if not customer.primary_phone:
-            phone = PhoneNumber()
-            phone.primary = True
-        else:
-            phone = customer.primary_phone
-        phone.phone = data['phone']
-        phone.contact = customer
-        phone.save()
-        '''
 
         form_postsave.send(ContactInfoForm, object=customer, formdata=data, form=self)
 
