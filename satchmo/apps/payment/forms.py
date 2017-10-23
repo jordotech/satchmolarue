@@ -27,7 +27,7 @@ from threaded_multihost import threadlocals
 import calendar
 import datetime
 import logging
-
+logger = logging.getLogger('orders')
 log = logging.getLogger('payment.forms')
 
 MONTHS = [(month,'%02d'%month) for month in range(1,13)]
