@@ -8,7 +8,7 @@ from product.models import TaxClass
 from satchmo_store.contact.models import Contact
 from satchmo_utils import is_string_like
 import logging
-
+from tax.signals import calculate_tax
 log = logging.getLogger('tax.area')
 
 class Processor(object):
@@ -22,7 +22,7 @@ class Processor(object):
         """
         self.order = order
         self.user = user
-        
+        calculate_tax.send(self)  # Allow overriding tax (i.e. user is tax exempt)
     def _get_location(self):
         area=country=None
         calc_by_ship_address = bool(config_value('TAX','TAX_AREA_ADDRESS') == 'ship')
@@ -202,6 +202,8 @@ class Processor(object):
                 t = price*rate.percentage
             else:
                 t = Decimal("0.00")
+            t = getattr(self, 'tax_override', t)
+
             sub_total += t
             taxes[tc_key] += t
         
