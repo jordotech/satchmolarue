@@ -767,7 +767,7 @@ class Option(models.Model):
         return "<Option: %s>" % repr(self.name)
 
     def __unicode__(self):
-        return u'%s: %s' % (self.option_group.name, self.name)
+        return u'%s [#%s]: %s' % (self.option_group.name, self.option_group.id, self.value)
 
 class OptionTranslation(models.Model):
     """A specific language translation for an `Option`.  This is intended for all descriptions which are not the
