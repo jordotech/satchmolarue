@@ -438,7 +438,8 @@ class ContactInfoForm(ProxyContactForm):
         form_postsave.send(ContactInfoForm, object=customer, formdata=data, form=self)
 
         if changed_location:
-            logger.debug('changed_location detected')
+            pass
+            #logger.debug('changed_location detected')
             # signals.satchmo_contact_location_changed.send(self, contact=customer)
 
         return customer.id
