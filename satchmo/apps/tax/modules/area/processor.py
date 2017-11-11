@@ -128,7 +128,7 @@ class Processor(object):
             t = Decimal("0.00")
         else:
             t = rate * price
-
+        t = getattr(self, 'tax_override', t)
         return t
 
     def by_product(self, product, quantity=Decimal('1')):
