@@ -101,7 +101,7 @@ class ContactManager(models.Manager):
         """
 
         contact = None
-        if request.user.is_authenticated():
+        if request.user and request.user.is_authenticated():
             try:
                 contact = Contact.objects.get(user=request.user.id)
                 request.session[CUSTOMER_ID] = contact.id
@@ -165,23 +165,23 @@ class Contact(models.Model):
     def _shipping_address(self):
         """Return the default shipping address or None."""
         try:
-            return self.addressbook_set.get(is_default_shipping=True)
-        except AddressBook.DoesNotExist:
+            return self.addressbook_set.filter(is_default_shipping=True).last()
+        except Exception, e:
             return None
     shipping_address = property(_shipping_address)
 
     def _billing_address(self):
         """Return the default billing address or None."""
         try:
-            return self.addressbook_set.get(is_default_billing=True)
-        except AddressBook.DoesNotExist:
+            return self.addressbook_set.filter(is_default_billing=True).last()
+        except Exception, e:
             return None
     billing_address = property(_billing_address)
 
     def _primary_phone(self):
         """Return the default phone number or None."""
         try:
-            return self.phonenumber_set.get(primary=True)
+            return self.phonenumber_set.filter(primary=True).last()
         except PhoneNumber.DoesNotExist:
             return None
     primary_phone = property(_primary_phone)
