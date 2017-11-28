@@ -101,7 +101,12 @@ class ContactManager(models.Manager):
         """
 
         contact = None
-        if request.user and request.user.is_authenticated():
+        is_authenticated = False
+        try:
+            is_authenticated = request.user.is_authenticated()
+        except:
+            pass
+        if is_authenticated:
             try:
                 contact = Contact.objects.get(user=request.user.id)
                 request.session[CUSTOMER_ID] = contact.id
