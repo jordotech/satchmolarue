@@ -115,18 +115,22 @@ class ContactManager(models.Manager):
         else:
             # Don't create a Contact if the user isn't authenticated.
             create = False
-            
-        if request.session.get(CUSTOMER_ID):
+        contact_id = None
+        try:
+            contact_id = request.session.get(CUSTOMER_ID)
+        except:
+            pass
+        if contact_id:
             try:
-                contactBySession = Contact.objects.get(id=request.session[CUSTOMER_ID])
+                contactBySession = Contact.objects.get(id=contact_id)
                 if contact is None:
                     contact = contactBySession
                 elif contact != contactBySession:
                     # For some reason the authenticated id and the session customer ID don't match.
                     # Let's bias the authenticated ID and kill this customer ID:
-                    log.debug("CURIOUS: The user authenticated as %r (contact id:%r) and a session as %r (contact id:%r)" %
-                               (contact.user.get_full_name(), contact.id, Contact.objects.get(id=request.session[CUSTOMER_ID]).full_name, request.session[CUSTOMER_ID]))
-                    log.debug("Deleting the session contact.")
+                    #log.debug("CURIOUS: The user authenticated as %r (contact id:%r) and a session as %r (contact id:%r)" %
+                               #(contact.user.get_full_name(), contact.id, Contact.objects.get(id=contact_id).full_name, request.session[CUSTOMER_ID]))
+                    #log.debug("Deleting the session contact.")
                     del request.session[CUSTOMER_ID]
             except Contact.DoesNotExist:
                 log.debug("This user has a session stored customer id (%r) which doesn't exist anymore. Removing it from the session." % request.session[CUSTOMER_ID])
