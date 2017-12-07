@@ -1200,7 +1200,11 @@ class OrderItem(models.Model):
         max_digits=18, decimal_places=10, blank=True, null=True)
 
     def __unicode__(self):
-        return self.product.translated_name()
+        try:
+            p = Product.objects.values('name').get(pk=self.product__id)
+            return p['name']
+        except:
+            return self.product.name
 
     def _get_category(self):
         category = self.product.get_category

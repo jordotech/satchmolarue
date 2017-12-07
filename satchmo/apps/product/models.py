@@ -184,7 +184,8 @@ class Category(models.Model):
         return lookup_translation(self, 'description', language_code)
 
     def translated_name(self, language_code=None):
-        return lookup_translation(self, 'name', language_code)
+        return self.name
+        #return lookup_translation(self, 'name', language_code)
 
     def _recurse_for_parents(self, cat_obj):
         p_list = []
@@ -696,7 +697,8 @@ class OptionGroup(models.Model):
         return lookup_translation(self, 'description', language_code)
 
     def translated_name(self, language_code=None):
-        return lookup_translation(self, 'name', language_code)
+        return self.name
+        #return lookup_translation(self, 'name', language_code)
 
     def __unicode__(self):
         if self.description:
@@ -751,7 +753,8 @@ class Option(models.Model):
     sort_order = models.IntegerField(_("Sort Order"), default=0)
 
     def translated_name(self, language_code=None):
-        return lookup_translation(self, 'name', language_code)
+        return self.name
+        #return lookup_translation(self, 'name', language_code)
 
     class Meta:
         ordering = ('option_group', 'sort_order', 'name')
@@ -922,7 +925,8 @@ class Product(models.Model):
         return lookup_translation(self, 'description', language_code)
 
     def translated_name(self, language_code=None):
-        return lookup_translation(self, 'name', language_code)
+        return self.name
+        #return lookup_translation(self, 'name', language_code)
 
     def translated_short_description(self, language_code=None):
         return lookup_translation(self, 'short_description', language_code)
