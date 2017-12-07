@@ -9,12 +9,13 @@ from satchmo_store.contact.models import Contact
 from satchmo_utils import is_string_like
 import logging
 from tax.signals import calculate_tax
+
 log = logging.getLogger('tax.area')
 
+
 class Processor(object):
-    
     method = "area"
-    
+
     def __init__(self, order=None, user=None):
         """
         Any preprocessing steps should go here
@@ -23,9 +24,10 @@ class Processor(object):
         self.order = order
         self.user = user
         calculate_tax.send(self)  # Allow overriding tax (i.e. user is tax exempt)
+
     def _get_location(self):
-        area=country=None
-        calc_by_ship_address = bool(config_value('TAX','TAX_AREA_ADDRESS') == 'ship')
+        area = country = None
+        calc_by_ship_address = bool(config_value('TAX', 'TAX_AREA_ADDRESS') == 'ship')
         if self.order:
             if calc_by_ship_address:
                 country = self.order.ship_country
@@ -33,14 +35,14 @@ class Processor(object):
             else:
                 country = self.order.bill_country
                 area = self.order.bill_state
-        
+
             if country:
                 try:
                     country = Country.objects.get(iso2_code__exact=country)
                 except Country.DoesNotExist:
                     log.info("Couldn't find Country from string: %s", country)
                     country = None
-        
+
         elif self.user and self.user.is_authenticated():
             try:
                 contact = Contact.objects.get(user=self.user)
@@ -71,47 +73,43 @@ class Processor(object):
                 area = AdminArea.objects.get(name__iexact=area,
                                              country=country)
             except AdminArea.DoesNotExist:
-                try:
-                    area = AdminArea.objects.get(abbrev__iexact=area,
-                                                 country=country)
-                except AdminArea.DoesNotExist:
-                    log.info("Couldn't find AdminArea from string: %s", area)
-                    area = None
-
+                area = AdminArea.objects.filter(abbrev__iexact=area, country=country).first()
+            if not area:
+                area = None
 
         return area, country
-        
+
     def get_percent(self, taxclass="Default", area=None, country=None):
-        return 100*self.get_rate(taxclass=taxclass, area=area, country=country)
-        
+        return 100 * self.get_rate(taxclass=taxclass, area=area, country=country)
+
     def get_rate(self, taxclass=None, area=None, country=None, get_object=False, **kwargs):
         if not taxclass:
             taxclass = "Default"
         rate = None
         if not (area or country):
             area, country = self._get_location()
-            
+
         if is_string_like(taxclass):
             try:
                 taxclass = TaxClass.objects.get(title__iexact=taxclass)
-            
+
             except TaxClass.DoesNotExist:
-                raise ImproperlyConfigured("Can't find a '%s' Tax Class", taxclass)            
-            
+                raise ImproperlyConfigured("Can't find a '%s' Tax Class", taxclass)
+
         if area:
             try:
                 rate = TaxRate.objects.get(taxClass=taxclass, taxZone=area)
-                
+
             except TaxRate.DoesNotExist:
                 rate = None
-                
+
         if not rate:
             try:
                 rate = TaxRate.objects.get(taxClass=taxclass, taxCountry=country)
-                
+
             except TaxRate.DoesNotExist:
                 rate = None
-        
+
         log.debug("Got rate [%s] = %s", taxclass, rate)
         if get_object:
             return rate
@@ -136,7 +134,7 @@ class Processor(object):
         price = product.get_qty_price(quantity)
         tc = product.taxClass
         return self.by_price(tc, price)
-        
+
     def by_orderitem(self, orderitem):
         if orderitem.product.taxable:
             price = orderitem.sub_total
@@ -151,7 +149,7 @@ class Processor(object):
 
         if subtotal:
             rate = None
-            if config_value('TAX','TAX_SHIPPING_AREA'):
+            if config_value('TAX', 'TAX_SHIPPING_AREA'):
                 try:
                     tc = TaxClass.objects.get(title=config_value('TAX', 'TAX_CLASS'))
                     rate = self.get_rate(taxclass=tc)
@@ -162,26 +160,26 @@ class Processor(object):
                 t = rate * subtotal
             else:
                 t = Decimal("0.00")
-            
+
         else:
             t = Decimal("0.00")
-        
+
         return t
 
     def process(self, order=None):
         """
         Calculate the tax and return it.
-        
+
         Probably need to make a breakout.
         """
         if order:
             self.order = order
         else:
             order = self.order
-        
+
         sub_total = Decimal('0.00')
         taxes = {}
-        
+
         rates = {}
         for item in order.orderitem_set.filter(product__taxable=True):
             tc = item.product.taxClass
@@ -189,29 +187,29 @@ class Processor(object):
                 tc_key = tc.title
             else:
                 tc_key = "Default"
-                
+
             if rates.has_key(tc_key):
                 rate = rates[tc_key]
             else:
                 rate = self.get_rate(tc, get_object=True)
                 rates[tc_key] = rate
                 taxes[tc_key] = Decimal("0.00")
-                
+
             price = item.sub_total
             if rate:
-                t = price*rate.percentage
+                t = price * rate.percentage
             else:
                 t = Decimal("0.00")
             t = getattr(self, 'tax_override', t)
 
             sub_total += t
             taxes[tc_key] += t
-        
+
         ship = self.shipping()
         sub_total += ship
         taxes['Shipping'] = ship
-        
+
         for k in taxes:
             taxes[k] = taxes[k]
-        
+
         return sub_total, taxes
