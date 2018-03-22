@@ -14,12 +14,12 @@ from django.utils.translation import ugettext, ugettext_lazy as _
 from django.utils import timezone
 from l10n.models import Country
 from l10n.utils import moneyfmt
-from livesettings import ConfigurationSettings, config_value
+from livesettings.functions import ConfigurationSettings, config_value
 from product.models import Discount, Product, Price, get_product_quantity_adjustments
 from product.prices import PriceAdjustmentCalc, PriceAdjustment
 from satchmo_store.contact.models import Contact
 from satchmo_utils.fields import CurrencyField
-from satchmo_utils.numbers import trunc_decimal
+from satchmo_utils.numbers import trunc_decimal, round_decimal
 import shipping.fields
 import payment.config
 from satchmo_utils.iterchoices import iterchoices_db
@@ -28,7 +28,7 @@ import keyedcache
 import logging
 import operator
 import signals
-
+logger = logging.getLogger('orders')
 log = logging.getLogger('satchmo_store.shop.models')
 
 class NullConfig(object):
@@ -372,7 +372,7 @@ class Cart(models.Model):
             cartitem=item_to_modify,
             added_quantity=number_added,
             details=details)
-
+        item_to_modify.save()
         if not alreadyInCart:
             self.cartitem_set.add(item_to_modify)
 
@@ -593,19 +593,20 @@ ORDER_CHOICES = (
     ('In Person', _('In Person')),
     ('Show', _('Show')),
 )
-
-ORDER_STATUS = (
-    ('Temp', _('Temp')),
-    ('New', _('New')),
-    ('Blocked', _('Blocked')),
-    ('In Process', _('In Process')),
-    ('Backordered', _('Backordered')),
-    ('Front Office', _('Front Office')),
-    ('Billed', _('Billed')),
-    ('Shipped', _('Shipped')),
-    ('Complete', _('Complete')),
-    ('Cancelled', _('Cancelled')),
-)
+ORDER_STATUS = getattr(settings, "ORDER_STATUS", None)
+if not ORDER_STATUS:
+    ORDER_STATUS = (
+        ('Temp', _('Temp')),
+        ('New', _('New')),
+        ('Blocked', _('Blocked')),
+        ('In Process', _('In Process')),
+        ('Backordered', _('Backordered')),
+        ('Front Office', _('Front Office')),
+        ('Billed', _('Billed')),
+        ('Shipped', _('Shipped')),
+        ('Complete', _('Complete')),
+        ('Cancelled', _('Cancelled')),
+    )
 
 class OrderManager(models.Manager):
     def from_request(self, request):
@@ -668,18 +669,22 @@ class Order(models.Model):
     site = models.ForeignKey(Site, verbose_name=_('Site'))
     contact = models.ForeignKey(Contact, verbose_name=_('Contact'))
     ship_addressee = models.CharField(_("Addressee"), max_length=61, blank=True)
+    ship_company = models.CharField(_("Company"), max_length=61, blank=True)
     ship_street1 = models.CharField(_("Street"), max_length=80, blank=True)
     ship_street2 = models.CharField(_("Street"), max_length=80, blank=True)
     ship_city = models.CharField(_("City"), max_length=50, blank=True)
     ship_state = models.CharField(_("State"), max_length=50, blank=True)
     ship_postal_code = models.CharField(_("Zip Code"), max_length=30, blank=True)
+    ship_phone = models.CharField(_("Phone"), max_length=30, blank=True)
     ship_country = models.CharField(_("Country"), max_length=2, blank=True)
     bill_addressee = models.CharField(_("Addressee"), max_length=61, blank=True)
+    bill_company = models.CharField(_("Company"), max_length=61, blank=True)
     bill_street1 = models.CharField(_("Street"), max_length=80, blank=True)
     bill_street2 = models.CharField(_("Street"), max_length=80, blank=True)
     bill_city = models.CharField(_("City"), max_length=50, blank=True)
     bill_state = models.CharField(_("State"), max_length=50, blank=True)
     bill_postal_code = models.CharField(_("Zip Code"), max_length=30, blank=True)
+    bill_phone = models.CharField(_("Phone"), max_length=30, blank=True)
     bill_country = models.CharField(_("Country"), max_length=2, blank=True)
     notes = models.TextField(_("Notes"), blank=True, null=True)
     sub_total = CurrencyField(_("Subtotal"),
@@ -768,21 +773,34 @@ class Order(models.Model):
         Copy the addresses so we know what the information was at time of order.
         """
         shipaddress = self.contact.shipping_address
+
         billaddress = self.contact.billing_address
-        self.ship_addressee = shipaddress.addressee
-        self.ship_street1 = shipaddress.street1
-        self.ship_street2 = shipaddress.street2
-        self.ship_city = shipaddress.city
-        self.ship_state = shipaddress.state
-        self.ship_postal_code = shipaddress.postal_code
-        self.ship_country = shipaddress.country.iso2_code
-        self.bill_addressee = billaddress.addressee
-        self.bill_street1 = billaddress.street1
-        self.bill_street2 = billaddress.street2
-        self.bill_city = billaddress.city
-        self.bill_state = billaddress.state
-        self.bill_postal_code = billaddress.postal_code
-        self.bill_country = billaddress.country.iso2_code
+        if shipaddress:
+            try:
+                self.ship_addressee = shipaddress.addressee
+                self.ship_company = shipaddress.company
+                self.ship_street1 = shipaddress.street1
+                self.ship_street2 = shipaddress.street2
+                self.ship_city = shipaddress.city
+                self.ship_state = shipaddress.state
+                self.ship_postal_code = shipaddress.postal_code
+                self.ship_phone = shipaddress.phone
+                self.ship_country = shipaddress.country.iso2_code
+            except:
+                pass
+        if billaddress:
+            try:
+                self.bill_addressee = billaddress.addressee
+                self.bill_company = billaddress.company
+                self.bill_street1 = billaddress.street1
+                self.bill_street2 = billaddress.street2
+                self.bill_city = billaddress.city
+                self.bill_state = billaddress.state
+                self.bill_postal_code = billaddress.postal_code
+                self.bill_phone = billaddress.phone
+                self.bill_country = billaddress.country.iso2_code
+            except:
+                pass
 
     def remove_all_items(self):
         """Delete all items belonging to this order."""
@@ -793,7 +811,8 @@ class Order(models.Model):
     def _balance(self):
         if self.total is None:
             self.force_recalculate_total(save=True)
-        return trunc_decimal(self.total-self.balance_paid, 2)
+        return round_decimal(self.total-self.balance_paid, 2)
+        #return round(self.total-self.balance_paid, 2)
 
     balance = property(fget=_balance)
 
@@ -915,8 +934,7 @@ class Order(models.Model):
         """
         if not self.pk:
             self.time_stamp = timezone.now()
-            if self.contact.addressbook_set.all().count() > 0:
-                self.copy_addresses()
+            self.copy_addresses()
         super(Order, self).save(**kwargs) # Call the "real" save() method.
 
     def invoice(self):
@@ -971,8 +989,9 @@ class Order(models.Model):
             else:
                 qty = lineitem.quantity
 
-            adjustment = get_product_quantity_adjustments(lineitem.product, qty=qty)
 
+            '''
+            adjustment = get_product_quantity_adjustments(lineitem.product, qty=qty)
             if adjustment and adjustment.price:
                 baseprice = adjustment.price.price
                 finalprice = adjustment.final_price()
@@ -991,25 +1010,13 @@ class Order(models.Model):
                     lineitem.line_item_price = baseprice * lineitem.quantity
                     log.debug('Adjusting lineitem unit price for %s. Full price=%s, discount=%s.  Final price for qty %d is %s',
                         lineitem.product.slug, baseprice, unitdiscount, lineitem.quantity, fullydiscounted)
+            '''
+
             if save:
                 lineitem.save()
 
             itemprices.append(lineitem.sub_total)
             fullprices.append(lineitem.line_item_price)
-
-        shipprice = Price()
-        shipprice.price = self.shipping_cost
-        shipadjust = PriceAdjustmentCalc(shipprice)
-        if 'Shipping' in discounts:
-            shipadjust += PriceAdjustment('discount', _('Discount'), discounts['Shipping'])
-
-        signals.satchmo_shipping_price_query.send(self, adjustment=shipadjust)
-        shipdiscount = shipadjust.total_adjustment()
-        self.shipping_discount = shipdiscount
-        total_discount += shipdiscount
-        #log.debug('total_discount (+ship): %s', total_discount)
-
-        self.discount = total_discount
 
         if itemprices:
             item_sub_total = reduce(operator.add, itemprices)
@@ -1022,6 +1029,20 @@ class Order(models.Model):
             full_sub_total = zero
 
         self.sub_total = full_sub_total
+
+        shipprice = Price()
+        shipprice.price = self.shipping_cost
+        shipadjust = PriceAdjustmentCalc(shipprice)
+        if 'Shipping' in discounts:
+            shipadjust += PriceAdjustment('discount', _('Discount'), discounts['Shipping'])
+
+        signals.satchmo_shipping_price_query.send(self, adjustment=shipadjust, item_discount=total_discount)
+        shipdiscount = shipadjust.total_adjustment()
+        self.shipping_discount = shipdiscount
+        total_discount += shipdiscount
+        #log.debug('total_discount (+ship): %s', total_discount)
+
+        self.discount = total_discount
 
         taxProcessor = get_tax_processor(self)
         totaltax, taxrates = taxProcessor.process()
@@ -1042,13 +1063,23 @@ class Order(models.Model):
             moneyfmt(self.discount),
             moneyfmt(self.tax))
 
-        self.total = Decimal(item_sub_total + self.shipping_sub_total + self.tax)
+        lineitem_total = Decimal(0)
+
+
+        # This is larue project specific, need to move lineitems logic into satchmo
+        if 'larue_py.apps.LarueOrderConfig' in settings.INSTALLED_APPS:
+            try:
+                from larue_py.modules.larue_order.models import Lineitem
+                for item in Lineitem.objects.values('amount').filter(order_id=self.id):
+                    lineitem_total += item['amount']
+            except Exception, e:
+                pass
+
+        self.total = Decimal(item_sub_total + self.shipping_sub_total + self.tax + lineitem_total)
 
         if save:
             self.save()
-
         signals.recalculate_total_done.send(self)
-
 
     def shippinglabel(self):
         url = urlresolvers.reverse('satchmo_print_shipping', None, None, {'doc' : 'shippinglabel', 'id' : self.id})
@@ -1083,7 +1114,7 @@ class Order(models.Model):
 
     def _paid_in_full(self):
         """True if total has been paid"""
-        return self.balance == Decimal('0.00')
+        return self.balance <= Decimal('0.00')
     paid_in_full = property(fget=_paid_in_full)
 
     def _has_downloads(self):
@@ -1115,7 +1146,7 @@ class Order(models.Model):
             self.shipping_cost = Decimal('0.00')
         if self.shipping_discount is None:
             self.shipping_discount = Decimal('0.00')
-        return self.shipping_cost-self.shipping_discount
+        return Decimal(self.shipping_cost)-Decimal(self.shipping_discount)
     shipping_sub_total = property(_shipping_sub_total)
 
     def _shipping_tax(self):
@@ -1182,10 +1213,16 @@ class OrderItem(models.Model):
         max_digits=18, decimal_places=10, blank=True, null=True)
 
     def __unicode__(self):
-        return self.product.translated_name()
+        try:
+            p = Product.objects.values('name').get(pk=self.product__id)
+            return p['name']
+        except:
+            return self.product.name
 
     def _get_category(self):
-        return(self.product.get_category.translated_name())
+        category = self.product.get_category
+        if category:
+            return category.translated_name()            
     category = property(_get_category)
 
     def _is_shippable(self):
@@ -1376,7 +1413,7 @@ class OrderPaymentManager(models.Manager):
 
 class OrderPayment(OrderPaymentBase):
     order = models.ForeignKey(Order, related_name="payments")
-
+    contact_id = models.IntegerField("Contact id", blank=True, null=True)
     objects = OrderPaymentManager()
 
     def __unicode__(self):

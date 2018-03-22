@@ -1,4 +1,4 @@
-from livesettings import config_value
+from livesettings.functions import config_value
 from payment.listeners import capture_on_ship_listener
 from product.models import Product
 from product.listeners import default_product_search_listener, discount_used_listener
@@ -68,8 +68,8 @@ def start_default_listening():
     signals.order_success.connect(discount_used_listener, sender=None)
     signals.satchmo_cart_changed.connect(remove_order_on_cart_update, sender=None)
     application_search.connect(default_product_search_listener, sender=Product)
-    signals.satchmo_order_status_changed.connect(capture_on_ship_listener)
-    signals.satchmo_order_status_changed.connect(notification.notify_on_ship_listener)
+    #signals.satchmo_order_status_changed.connect(capture_on_ship_listener)
+    #signals.satchmo_order_status_changed.connect(notification.notify_on_ship_listener)
     signals.satchmo_cart_add_verify.connect(veto_out_of_stock)
 
     signals.sending_store_mail.connect(send_html_email)

@@ -6,7 +6,8 @@ Thanks to Vasily Sulatskov for sending this to the list.
 """
 
 from django.contrib.auth.backends import ModelBackend
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+User = get_user_model()
 import re
 
 email_re = re.compile(

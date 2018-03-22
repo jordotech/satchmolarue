@@ -1,11 +1,12 @@
 from django import forms
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.forms import AuthenticationForm
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+User = get_user_model()
 from django.contrib.sites.models import Site
 from django.utils.translation import ugettext_lazy as _, ugettext
 from satchmo_store.accounts.mail import send_welcome_email
-from livesettings import config_value
+from livesettings.functions import config_value
 from satchmo_store.contact.forms import ContactInfoForm
 from satchmo_store.contact.models import Contact, ContactRole
 from satchmo_utils.unique_id import generate_id
@@ -161,7 +162,11 @@ class RegistrationForm(forms.Form):
         signals.satchmo_registration.send(self, contact=contact, subscribed=subscribed, data=data)
 
         if not verify:
-            user = authenticate(username=username, password=password)
+            username_field = getattr(User, "USERNAME_FIELD", 'username')
+            if username_field == 'username':
+                user = authenticate(username=username, password=password)
+            else:
+                user = authenticate(username=email, password=password)
             login(request, user)
             send_welcome_email(email, first_name, last_name)
             signals.satchmo_registration_verified.send(self, contact=contact)

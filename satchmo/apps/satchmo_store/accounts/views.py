@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib.auth import login, REDIRECT_FIELD_NAME
-from django.contrib.sites.models import Site, RequestSite
+from django.contrib.sites.models import Site
+from django.contrib.sites.requests import RequestSite
 from django.core import urlresolvers
 from django.http import HttpResponseRedirect, QueryDict
 from django.shortcuts import render_to_response
@@ -10,7 +11,7 @@ from django.views.decorators.cache import never_cache
 from django.views.generic.base import TemplateView
 from forms import RegistrationAddressForm, RegistrationForm, EmailAuthenticationForm
 from l10n.models import Country
-from livesettings import config_get_group, config_value
+from livesettings.functions import config_get_group, config_value
 from satchmo_store.accounts.mail import send_welcome_email
 from satchmo_store.accounts import signals
 from satchmo_store.contact import CUSTOMER_ID
@@ -30,7 +31,7 @@ def emaillogin(request, template_name='registration/login.html',
     auth_form=EmailAuthenticationForm, redirect_field_name=REDIRECT_FIELD_NAME):
     "Displays the login form and handles the login action. Altered to use the EmailAuthenticationForm"
 
-    redirect_to = request.REQUEST.get(redirect_field_name, '')
+    redirect_to = request.GET.get(redirect_field_name, '')
 
     # Avoid redirecting to logout if the user clicked on login after logout
     if redirect_to == urlresolvers.reverse('auth_logout'):
@@ -267,7 +268,7 @@ def login_signup(request,
                  handler_kwargs = {}):
     """Display/handle a combined login and create account form"""
 
-    redirect_to = request.REQUEST.get(REDIRECT_FIELD_NAME, '')
+    redirect_to = request.GET.get(REDIRECT_FIELD_NAME, '')
     handler_kwargs['redirect'] = redirect_to
 
     loginform = None

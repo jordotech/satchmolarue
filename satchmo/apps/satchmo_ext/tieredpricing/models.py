@@ -1,5 +1,7 @@
 from decimal import Decimal
-from django.contrib.auth.models import Group, User
+from django.contrib.auth.models import Group
+from django.contrib.auth import get_user_model
+User = get_user_model()
 from django.db import models
 from django.db.models import Q
 from django.utils.translation import ugettext_lazy as _

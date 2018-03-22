@@ -1,6 +1,7 @@
 from decimal import Decimal
 from django.conf import settings
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+User = get_user_model()
 from django.contrib.sites.models import Site
 from django.core import mail
 from django.core.urlresolvers import reverse as url
@@ -12,7 +13,7 @@ from django.core.cache import cache
 from keyedcache import cache_delete
 from l10n.models import Country
 from l10n.utils import moneyfmt
-from livesettings import config_get
+from livesettings.functions import config_get
 from payment import active_gateways
 from product.models import Product
 from product.utils import rebuild_pricing, find_auto_discounts

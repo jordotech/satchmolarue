@@ -378,7 +378,8 @@ class ProductExportTest(TestCase):
 
     def setUp(self):
         # Log in as a superuser
-        from django.contrib.auth.models import User
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
         user = User.objects.create_user('root', 'root@eruditorum.com', '12345')
         user.is_staff = True
         user.is_superuser = True

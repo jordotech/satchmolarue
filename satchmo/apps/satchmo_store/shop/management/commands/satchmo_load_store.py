@@ -26,7 +26,8 @@ class Command(NoArgsCommand):
         from django.conf import settings
         from l10n.models import Country
         from django.contrib.sites.models import Site
-        from django.contrib.auth.models import User
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
         #idempotency test
 
         print "Checking for existing sample data."

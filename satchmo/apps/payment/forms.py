@@ -4,7 +4,7 @@ from django.template import loader
 from django.template import RequestContext
 from django.utils.translation import ugettext_lazy as _
 from l10n.utils import moneyfmt
-from livesettings import config_value, config_value_safe
+from livesettings.functions import config_value, config_value_safe
 from payment import signals
 from payment.config import labelled_gateway_choices
 from payment.models import CreditCardDetail
@@ -27,7 +27,7 @@ from threaded_multihost import threadlocals
 import calendar
 import datetime
 import logging
-
+logger = logging.getLogger('orders')
 log = logging.getLogger('payment.forms')
 
 MONTHS = [(month,'%02d'%month) for month in range(1,13)]
@@ -82,7 +82,7 @@ def _get_shipping_choices(request, paymentmodule, cart, contact, default_view_ta
 
     for method in methods:
         method.calculate(cart, contact)
-        if method.valid():
+        if method.valid(order=order):
             template = lookup_template(paymentmodule, 'shipping/options.html')
             t = loader.get_template(template)
             shipcost = finalcost = method.cost()
@@ -418,12 +418,12 @@ class CreditPayShipForm(SimplePayShipForm):
     ccv = forms.CharField(max_length=4, label='Sec code', widget=forms.TextInput(attrs={'autocomplete':'off'}))
 
     def __init__(self, request, paymentmodule, *args, **kwargs):
-        creditchoices = paymentmodule.CREDITCHOICES.choice_values
+        #creditchoices = paymentmodule.CREDITCHOICES.choice_values
         super(CreditPayShipForm, self).__init__(request, paymentmodule, *args, **kwargs)
 
         self.cc = None
 
-        self.fields['credit_type'].choices = creditchoices
+        #self.fields['credit_type'].choices = creditchoices # Caused huge headache with keyed cache, set in
 
         num_years = config_value('PAYMENT', 'CC_NUM_YEARS')
         year_now = datetime.date.today().year
@@ -477,9 +477,9 @@ class CreditPayShipForm(SimplePayShipForm):
                     cc.ccv = data['ccv']
                     self.cc = cc
                     results = processor.authorize_and_release(order=self.order)
-                if not results.success:
-                    log.debug('Payment module error: %s', results)
-                    raise forms.ValidationError(results.message)
+                    if not results.success:
+                        log.debug('Payment module error: %s', results)
+                        raise forms.ValidationError(results.message)
                 else:
                     log.debug('Payment module capture/release success for %s', self.order)
             else:

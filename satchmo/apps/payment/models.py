@@ -9,7 +9,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
-from livesettings import config_value, config_choice_values, SettingNotSet
+from livesettings.functions import config_value
 from satchmo_utils.iterchoices import iterchoices_db
 import payment.config
 from satchmo_store.contact.models import Contact
@@ -27,7 +27,7 @@ class PaymentOption(models.Model):
     configuration.
     """
     description = models.CharField(_("Description"), max_length=20)
-    active = models.BooleanField(_("Active"), 
+    active = models.BooleanField(_("Active"), default=False,
         help_text=_("Should this be displayed as an option for the user?"))
     optionName = models.CharField(_("Option Name"), max_length=20, choices=iterchoices_db(payment.config.labelled_gateway_choices),
         unique=True, 

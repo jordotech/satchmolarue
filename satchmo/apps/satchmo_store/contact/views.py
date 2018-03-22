@@ -58,7 +58,7 @@ def update(request):
                 contact = Contact(user=request.user)
             custID = form.save(contact=contact)
             request.session[CUSTOMER_ID] = custID
-            redirect_to = request.REQUEST.get(REDIRECT_FIELD_NAME, '')
+            redirect_to = request.GET.get(REDIRECT_FIELD_NAME, '')
             if not redirect_to or '//' in redirect_to or ' ' in redirect_to:
                 redirect_to = urlresolvers.reverse('satchmo_account_info')
 
@@ -101,7 +101,7 @@ def update(request):
             init_data['country'] = countries[0]
 
 
-    init_data['next'] = request.REQUEST.get(REDIRECT_FIELD_NAME, '')
+    init_data['next'] = request.GET.get(REDIRECT_FIELD_NAME, '')
     context = RequestContext(request, init_data)
 
     return render_to_response('contact/update_form.html',
@@ -176,7 +176,7 @@ class AjaxGetStateException(Exception):
         self.message = message
 
 def ajax_get_state(request, **kwargs):
-    formdata = request.REQUEST.copy()
+    formdata = request.copy()
 
     try:
         if formdata.has_key("country"):

@@ -1,7 +1,7 @@
 from decimal import Decimal, InvalidOperation
 from django.contrib.sites.models import Site
 from django.db.models import Q
-from livesettings import config_value
+from livesettings.functions import config_value
 from product.models import Product, Category, Discount
 import logging
 
@@ -17,7 +17,7 @@ def default_product_search_listener(sender, request=None, category=None, keyword
 
     show_pv = config_value('PRODUCT','SEARCH_SHOW_PRODUCTVARIATIONS', False)
 
-    products = Product.objects.active_by_site(variations=show_pv, site=site)
+    products = Product.objects.by_site(variations=show_pv, site=site)
     if category:
         categories = Category.objects.active(site=site, slug=category)
         if categories:
@@ -41,7 +41,7 @@ def default_product_search_listener(sender, request=None, category=None, keyword
             | Q(short_description__icontains=keyword)
             | Q(description__icontains=keyword)
             | Q(meta__icontains=keyword)
-            | Q(sku__iexact=keyword) )
+            | Q(sku__icontains=keyword) )
 
     results.update({
         'categories': categories,

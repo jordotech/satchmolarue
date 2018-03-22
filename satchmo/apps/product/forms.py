@@ -13,7 +13,7 @@ from django.core.management.color import no_style
 from django.db import transaction
 from django.http import HttpResponse
 from django.utils.translation import ugettext as _
-from livesettings import config_value
+from livesettings.functions import config_value
 from product.models import Product, Price, Option
 from satchmo_utils.unique_id import slugify
 import logging
@@ -408,7 +408,8 @@ class VariationManagerForm(forms.Form):
             configurableproduct = self.product.configurableproduct;
 
             for grp in configurableproduct.option_group.all():
-                optchoices = [("%i_%i" % (opt.option_group.id, opt.id), opt.name) for opt in grp.option_set.all()]
+                optchoices = [("%i_%i" % (opt.option_group.id, opt.id), "'%s' [%s] %s" % (opt.name, opt.value, opt.price_change)) for opt in
+                              grp.option_set.all()]
                 kw = {
                     'label' : grp.name,
                     'widget' : forms.CheckboxSelectMultiple(),
@@ -427,7 +428,7 @@ class VariationManagerForm(forms.Form):
                 optnames = [opt.value for opt in opts]
                 kw = {
                     'initial' : None,
-                    'label' : " ".join(optnames),
+                    'label' : " | ".join(optnames),
                     'required' : False
                 }
 
@@ -477,7 +478,7 @@ class VariationManagerForm(forms.Form):
                 self.fields[slugkey] = sf
                 self.slugdict[key] = slugkey
 
-    def _save(self, request):
+    def save(self, request):
         self.full_clean()
         data = self.cleaned_data
         optiondict = _get_optiondict()
@@ -497,8 +498,6 @@ class VariationManagerForm(forms.Form):
                             self._delete_variation(opts, request)
                 except KeyError:
                     pass
-
-    save = transaction.commit_on_success(_save)
 
     def _create_variation(self, opts, key, data, request):
         namekey = "name__" + key

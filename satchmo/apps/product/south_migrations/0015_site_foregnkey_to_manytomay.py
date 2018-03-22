@@ -1,21 +1,20 @@
 # -*- coding: utf-8 -*-
-from south.utils import datetime_utils as datetime
+import datetime
 from south.db import db
-from south.v2 import SchemaMigration
+from south.v2 import DataMigration
 from django.db import models
 
-
-class Migration(SchemaMigration):
+class Migration(DataMigration):
 
     def forwards(self, orm):
-
-        # Changing field 'ProductPriceLookup.key'
-        db.alter_column('product_productpricelookup', 'key', self.gf('django.db.models.fields.CharField')(max_length=200, null=True))
+        "Write your forwards methods here."
+        list_of_models = ['product.Category', 'product.Discount', 'product.OptionGroup', 'product.Product']
+        for model in list_of_models:
+            for obj in orm[model].objects.all():
+                obj.sites.add(obj.site)
 
     def backwards(self, orm):
-
-        # Changing field 'ProductPriceLookup.key'
-        db.alter_column('product_productpricelookup', 'key', self.gf('django.db.models.fields.CharField')(max_length=60, null=True))
+        "Write your backwards methods here."
 
     models = {
         'product.attributeoption': {
@@ -28,7 +27,7 @@ class Migration(SchemaMigration):
             'validation': ('django.db.models.fields.CharField', [], {'max_length': '100'})
         },
         'product.category': {
-            'Meta': {'ordering': "['site', 'parent__ordering', 'parent__name', 'ordering', 'name']", 'unique_together': "(('site', 'slug'),)", 'object_name': 'Category'},
+            'Meta': {'ordering': "['parent__ordering', 'parent__name', 'ordering', 'name']", 'object_name': 'Category'},
             'description': ('django.db.models.fields.TextField', [], {'blank': 'True'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'is_active': ('django.db.models.fields.BooleanField', [], {'default': 'True'}),
@@ -38,6 +37,7 @@ class Migration(SchemaMigration):
             'parent': ('django.db.models.fields.related.ForeignKey', [], {'blank': 'True', 'related_name': "'child'", 'null': 'True', 'to': "orm['product.Category']"}),
             'related_categories': ('django.db.models.fields.related.ManyToManyField', [], {'blank': 'True', 'related_name': "'related_categories_rel_+'", 'null': 'True', 'to': "orm['product.Category']"}),
             'site': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['sites.Site']"}),
+            'sites': ('django.db.models.fields.related.ManyToManyField', [], {'related_name': "'categories'", 'symmetrical': 'False', 'to': "orm['sites.Site']"}),
             'slug': ('django.db.models.fields.SlugField', [], {'max_length': '50', 'blank': 'True'})
         },
         'product.categoryattribute': {
@@ -53,7 +53,7 @@ class Migration(SchemaMigration):
             'caption': ('django.db.models.fields.CharField', [], {'max_length': '100', 'null': 'True', 'blank': 'True'}),
             'category': ('django.db.models.fields.related.ForeignKey', [], {'blank': 'True', 'related_name': "'images'", 'null': 'True', 'to': "orm['product.Category']"}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'picture': (u'satchmo_utils.thumbnail.field.ImageWithThumbnailField', [], {'name_field': "'_filename'", 'max_length': '200'}),
+            'picture': ('satchmo_utils.thumbnail.field.ImageWithThumbnailField', [], {'name_field': "'_filename'", 'max_length': '200'}),
             'sort': ('django.db.models.fields.IntegerField', [], {'default': '0'})
         },
         'product.categoryimagetranslation': {
@@ -91,6 +91,7 @@ class Migration(SchemaMigration):
             'percentage': ('django.db.models.fields.DecimalField', [], {'null': 'True', 'max_digits': '5', 'decimal_places': '2', 'blank': 'True'}),
             'shipping': ('django.db.models.fields.CharField', [], {'default': "'NONE'", 'max_length': '10', 'null': 'True', 'blank': 'True'}),
             'site': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['sites.Site']"}),
+            'sites': ('django.db.models.fields.related.ManyToManyField', [], {'related_name': "'discounts'", 'symmetrical': 'False', 'to': "orm['sites.Site']"}),
             'startDate': ('django.db.models.fields.DateField', [], {}),
             'valid_categories': ('django.db.models.fields.related.ManyToManyField', [], {'symmetrical': 'False', 'to': "orm['product.Category']", 'null': 'True', 'blank': 'True'}),
             'valid_products': ('django.db.models.fields.related.ManyToManyField', [], {'symmetrical': 'False', 'to': "orm['product.Product']", 'null': 'True', 'blank': 'True'})
@@ -110,6 +111,7 @@ class Migration(SchemaMigration):
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '50'}),
             'site': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['sites.Site']"}),
+            'sites': ('django.db.models.fields.related.ManyToManyField', [], {'related_name': "'option_groups'", 'symmetrical': 'False', 'to': "orm['sites.Site']"}),
             'sort_order': ('django.db.models.fields.IntegerField', [], {'default': '0'})
         },
         'product.optiongrouptranslation': {
@@ -140,7 +142,7 @@ class Migration(SchemaMigration):
             'quantity': ('django.db.models.fields.DecimalField', [], {'default': "'1.0'", 'max_digits': '18', 'decimal_places': '6'})
         },
         'product.product': {
-            'Meta': {'ordering': "('site', 'ordering', 'name')", 'unique_together': "(('site', 'sku'), ('site', 'slug'))", 'object_name': 'Product'},
+            'Meta': {'ordering': "('ordering', 'name')", 'object_name': 'Product'},
             'active': ('django.db.models.fields.BooleanField', [], {'default': 'True'}),
             'also_purchased': ('django.db.models.fields.related.ManyToManyField', [], {'blank': 'True', 'related_name': "'also_purchased_rel_+'", 'null': 'True', 'to': "orm['product.Product']"}),
             'category': ('django.db.models.fields.related.ManyToManyField', [], {'to': "orm['product.Category']", 'symmetrical': 'False', 'blank': 'True'}),
@@ -160,6 +162,7 @@ class Migration(SchemaMigration):
             'shipclass': ('django.db.models.fields.CharField', [], {'default': "'DEFAULT'", 'max_length': '10'}),
             'short_description': ('django.db.models.fields.TextField', [], {'default': "''", 'max_length': '200', 'blank': 'True'}),
             'site': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['sites.Site']"}),
+            'sites': ('django.db.models.fields.related.ManyToManyField', [], {'related_name': "'products'", 'symmetrical': 'False', 'to': "orm['sites.Site']"}),
             'sku': ('django.db.models.fields.CharField', [], {'max_length': '255', 'null': 'True', 'blank': 'True'}),
             'slug': ('django.db.models.fields.SlugField', [], {'max_length': '255', 'blank': 'True'}),
             'taxClass': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['product.TaxClass']", 'null': 'True', 'blank': 'True'}),
@@ -182,7 +185,7 @@ class Migration(SchemaMigration):
             'Meta': {'ordering': "['sort']", 'object_name': 'ProductImage'},
             'caption': ('django.db.models.fields.CharField', [], {'max_length': '100', 'null': 'True', 'blank': 'True'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'picture': (u'satchmo_utils.thumbnail.field.ImageWithThumbnailField', [], {'name_field': "'_filename'", 'max_length': '200'}),
+            'picture': ('satchmo_utils.thumbnail.field.ImageWithThumbnailField', [], {'name_field': "'_filename'", 'max_length': '200'}),
             'product': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['product.Product']", 'null': 'True', 'blank': 'True'}),
             'sort': ('django.db.models.fields.IntegerField', [], {'default': '0'})
         },
@@ -201,7 +204,7 @@ class Migration(SchemaMigration):
             'discountable': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'items_in_stock': ('django.db.models.fields.DecimalField', [], {'max_digits': '18', 'decimal_places': '6'}),
-            'key': ('django.db.models.fields.CharField', [], {'max_length': '200', 'null': 'True'}),
+            'key': ('django.db.models.fields.CharField', [], {'max_length': '60', 'null': 'True'}),
             'parentid': ('django.db.models.fields.IntegerField', [], {'null': 'True'}),
             'price': ('django.db.models.fields.DecimalField', [], {'max_digits': '14', 'decimal_places': '6'}),
             'productslug': ('django.db.models.fields.CharField', [], {'max_length': '255', 'db_index': 'True'}),
@@ -234,3 +237,4 @@ class Migration(SchemaMigration):
     }
 
     complete_apps = ['product']
+    symmetrical = True

@@ -1,13 +1,14 @@
 """
 Stores customer, organization, and order information.
 """
-from django.contrib.auth.models import User
+
 from django.db import models
 from django.utils.translation import ugettext, ugettext_lazy as _
 from l10n.models import Country
 from satchmo_store.contact import CUSTOMER_ID
 import datetime
 import logging
+from django.conf import settings
 
 log = logging.getLogger('contact.models')
 
@@ -100,7 +101,12 @@ class ContactManager(models.Manager):
         """
 
         contact = None
-        if request.user.is_authenticated():
+        is_authenticated = False
+        try:
+            is_authenticated = request.user.is_authenticated()
+        except:
+            pass
+        if is_authenticated:
             try:
                 contact = Contact.objects.get(user=request.user.id)
                 request.session[CUSTOMER_ID] = contact.id
@@ -109,18 +115,22 @@ class ContactManager(models.Manager):
         else:
             # Don't create a Contact if the user isn't authenticated.
             create = False
-            
-        if request.session.get(CUSTOMER_ID):
+        contact_id = None
+        try:
+            contact_id = request.session.get(CUSTOMER_ID)
+        except:
+            pass
+        if contact_id:
             try:
-                contactBySession = Contact.objects.get(id=request.session[CUSTOMER_ID])
+                contactBySession = Contact.objects.get(id=contact_id)
                 if contact is None:
                     contact = contactBySession
                 elif contact != contactBySession:
                     # For some reason the authenticated id and the session customer ID don't match.
                     # Let's bias the authenticated ID and kill this customer ID:
-                    log.debug("CURIOUS: The user authenticated as %r (contact id:%r) and a session as %r (contact id:%r)" %
-                               (contact.user.get_full_name(), contact.id, Contact.objects.get(id=request.session[CUSTOMER_ID]).full_name, request.session[CUSTOMER_ID]))
-                    log.debug("Deleting the session contact.")
+                    #log.debug("CURIOUS: The user authenticated as %r (contact id:%r) and a session as %r (contact id:%r)" %
+                               #(contact.user.get_full_name(), contact.id, Contact.objects.get(id=contact_id).full_name, request.session[CUSTOMER_ID]))
+                    #log.debug("Deleting the session contact.")
                     del request.session[CUSTOMER_ID]
             except Contact.DoesNotExist:
                 log.debug("This user has a session stored customer id (%r) which doesn't exist anymore. Removing it from the session." % request.session[CUSTOMER_ID])
@@ -144,14 +154,16 @@ class Contact(models.Model):
     title = models.CharField(_("Title"), max_length=30, blank=True, null=True)
     first_name = models.CharField(_("First name"), max_length=30, )
     last_name = models.CharField(_("Last name"), max_length=30, )
-    user = models.ForeignKey(User, blank=True, null=True, unique=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, unique=True)
     role = models.ForeignKey(ContactRole, verbose_name=_("Role"), null=True)
     organization = models.ForeignKey(Organization, verbose_name=_("Organization"), blank=True, null=True)
     dob = models.DateField(_("Date of birth"), blank=True, null=True)
     email = models.EmailField(_("Email"), blank=True, max_length=75)
     notes = models.TextField(_("Notes"), max_length=500, blank=True)
     create_date = models.DateField(_("Creation date"))
-
+    merge_parent = models.ForeignKey('contact.Contact', blank=True, null=True,
+                                     related_name="merge_children",
+                                     help_text="The contact object this one was merged into.")
     objects = ContactManager()
 
     def _get_full_name(self):
@@ -162,23 +174,23 @@ class Contact(models.Model):
     def _shipping_address(self):
         """Return the default shipping address or None."""
         try:
-            return self.addressbook_set.get(is_default_shipping=True)
-        except AddressBook.DoesNotExist:
+            return self.addressbook_set.filter(is_default_shipping=True).last()
+        except Exception, e:
             return None
     shipping_address = property(_shipping_address)
 
     def _billing_address(self):
         """Return the default billing address or None."""
         try:
-            return self.addressbook_set.get(is_default_billing=True)
-        except AddressBook.DoesNotExist:
+            return self.addressbook_set.filter(is_default_billing=True).last()
+        except Exception, e:
             return None
     billing_address = property(_billing_address)
 
     def _primary_phone(self):
         """Return the default phone number or None."""
         try:
-            return self.phonenumber_set.get(primary=True)
+            return self.phonenumber_set.filter(primary=True).last()
         except PhoneNumber.DoesNotExist:
             return None
     primary_phone = property(_primary_phone)
@@ -223,8 +235,9 @@ class Contact(models.Model):
         verbose_name = _("Contact")
         verbose_name_plural = _("Contacts")
 
-    def related_label(self):
-        return u"%s (%s)" % (self.full_name, self.email)
+    @staticmethod
+    def autocomplete_search_fields():
+        return 'last_name', 'first_name'
 
 PHONE_CHOICES = (
     ('Work', _('Work')),
@@ -292,12 +305,14 @@ class AddressBook(models.Model):
     description = models.CharField(_("Description"), max_length=20, blank=True,
         help_text=_('Description of address - Home, Office, Warehouse, etc.',))
     addressee = models.CharField(_("Addressee"), max_length=80)
+    company = models.CharField(_("Company"), max_length=80, blank=True)
     street1 = models.CharField(_("Street"), max_length=80)
     street2 = models.CharField(_("Street"), max_length=80, blank=True)
     state = models.CharField(_("State"), max_length=50, blank=True)
     city = models.CharField(_("City"), max_length=50)
     postal_code = models.CharField(_("Zip Code"), max_length=30)
     country = models.ForeignKey(Country, verbose_name=_("Country"))
+    phone = models.CharField(_("Phone Number"), blank=True, max_length=30,)
     is_default_shipping = models.BooleanField(_("Default Shipping Address"),
         default=False)
     is_default_billing = models.BooleanField(_("Default Billing Address"),
