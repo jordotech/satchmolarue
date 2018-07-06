@@ -29,6 +29,8 @@ import keyedcache
 import logging
 import operator
 import signals
+from uuid import uuid4
+import os
 
 log = logging.getLogger('product.models')
 
@@ -1506,6 +1508,13 @@ class Price(models.Model):
         verbose_name_plural = _("Prices")
         unique_together = (("product", "quantity", "expires"),)
 
+
+def product_image_directory_path(instance, filename):
+    ext = filename.split('.')[-1]
+    basename=filename.split('.')[0]
+    filename = '{}-{}.{}'.format(basename, uuid4().hex[:5], ext)
+    return os.path.join("images", filename)
+
 class ProductImage(models.Model):
     """
     A picture of an item.  Can have many pictures associated with an item.
@@ -1513,7 +1522,7 @@ class ProductImage(models.Model):
     """
     product = models.ForeignKey(Product, null=True, blank=True)
     picture = ImageWithThumbnailField(verbose_name=_('Picture'),
-        upload_to="__DYNAMIC__",
+        upload_to=product_image_directory_path,
         name_field="_filename",
         max_length=200) #Media root is automatically prepended
     caption = models.CharField(_("Optional caption"), max_length=100,
