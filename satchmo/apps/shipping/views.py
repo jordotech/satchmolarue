@@ -263,7 +263,7 @@ class ConverterFactory(object):
         return self.Converter(*args, **kwargs)
 
 
-converter_factory = ConverterFactory()
+
 
 
 @staff_member_required
@@ -271,5 +271,6 @@ converter_factory = ConverterFactory()
 def displayDoc(request, id, doc):
     """Displays the document using the specified converter in 'settings.py'.
     """
+    converter_factory = ConverterFactory()
     converter = converter_factory()
     return converter(request, id, doc)
