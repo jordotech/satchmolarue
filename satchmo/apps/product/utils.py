@@ -82,6 +82,7 @@ def productvariation_details(product, include_tax, user, create=False):
             detail['SLUG'] = detl.productslug
             detail['SKU'] = detl.product.sku
             detail['STOCK'] = round_decimal(detl.items_in_stock)
+            detail['ACTIVE'] = detl.active
             if not detl.active:
                 qty = round_decimal('-1.0')
             elif ignore_stock:
